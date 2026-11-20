@@ -215,120 +215,122 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const prio = priorityOf(c, state.day);
 
   return (
-    <div className="space-y-6">
-      <CaseBreadcrumb name={patient.name} />
+    <div>
+      {/* 70% Left (Breadcrumb + Compact Header + Scrollable Panels) : 30% Right (Sticky WhatsApp Chat aligned with Breadcrumb) */}
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(300px,3fr)]">
+        {/* Left 70%: Scrollable Case Information */}
+        <div className="min-w-0 space-y-3.5">
+          <CaseBreadcrumb name={patient.name} />
 
-      {/* Header */}
-      <section className="rounded-xl border border-[#E8EBF1] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-        <div className="flex flex-wrap items-start gap-4 px-5 py-4">
-          <Initials name={patient.name} avatarUrl={patientAvatar} className="size-12 text-sm" />
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-semibold tracking-tight text-navy-950">
-              {patient.name}, {patient.age}
-            </h1>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-steel-500">
-              <span className="font-semibold text-navy-800">
-                BP {c.systolic}/{c.diastolic}
-              </span>
-              <span>· Hypertension (screening)</span>
-              <span>· Day {dayCount(c, state.day)}</span>
-              {isOverdue(c, state.day) && <span className="font-semibold text-status-awaiting">· Overdue</span>}
-              <CaseStatusBadge status={c.status} />
-              {c.conversation !== "idle" && <ConversationBadge status={c.conversation} />}
-              {prio === "unassigned" && <PriorityBadge priority={prio} />}
+          {/* Compact Header */}
+          <section className="rounded-xl border border-[#E8EBF1] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <div className="flex flex-wrap items-start gap-3 px-4 py-3">
+              <Initials name={patient.name} avatarUrl={patientAvatar} className="size-10 text-xs" />
+              <div className="min-w-0 flex-1">
+                <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-navy-950">
+                  {patient.name}, {patient.age}
+                </h1>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11.5px] text-steel-500">
+                  <span className="font-semibold text-navy-800">
+                    BP {c.systolic}/{c.diastolic}
+                  </span>
+                  <span>· Hypertension (screening)</span>
+                  <span>· Day {dayCount(c, state.day)}</span>
+                  {isOverdue(c, state.day) && <span className="font-semibold text-status-awaiting">· Overdue</span>}
+                  <CaseStatusBadge status={c.status} />
+                  {c.conversation !== "idle" && <ConversationBadge status={c.conversation} />}
+                  {prio === "unassigned" && <PriorityBadge priority={prio} />}
+                </div>
+                <p className="mt-1 text-[11.5px] text-steel-500">
+                  Owner:{" "}
+                  <b className="text-navy-800">
+                    {c.takeoverBy
+                      ? `${accountById(c.takeoverBy)?.name} (took over)`
+                      : c.ownerType === "vani"
+                        ? "Vani"
+                        : c.ownerType === "doctor"
+                          ? "Doctor (Dr. Yoga)"
+                          : (accountById(c.coordinatorId)?.name ?? "Unassigned")}
+                  </b>{" "}
+                  · Coordinator: {accountById(c.coordinatorId)?.name ?? "Unassigned"} · Registered at {patient.registeredClinic} · Insurance {patient.insuranceStatus}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {!closed && !c.takeoverBy && (
+                  <ActionButton icon={<Hand />} tone="primary" onClick={() => dispatch({ type: "TAKE_OVER", caseId: c.id })}>
+                    Take over
+                  </ActionButton>
+                )}
+                {!closed && takenByMe && (
+                  <ActionButton icon={<Undo2 />} tone="primary" onClick={() => dispatch({ type: "RETURN_TO_VANI", caseId: c.id })}>
+                    Return to Vani
+                  </ActionButton>
+                )}
+              </div>
             </div>
-            <p className="mt-1.5 text-xs text-steel-500">
-              Owner:{" "}
-              <b className="text-navy-800">
-                {c.takeoverBy
-                  ? `${accountById(c.takeoverBy)?.name} (took over)`
-                  : c.ownerType === "vani"
-                    ? "Vani"
-                    : c.ownerType === "doctor"
-                      ? "Doctor (Dr. Yoga)"
-                      : (accountById(c.coordinatorId)?.name ?? "Unassigned")}
-              </b>{" "}
-              · Coordinator: {accountById(c.coordinatorId)?.name ?? "Unassigned"} · Registered at {patient.registeredClinic} · Insurance {patient.insuranceStatus}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {!closed && !c.takeoverBy && (
-              <ActionButton icon={<Hand />} tone="primary" onClick={() => dispatch({ type: "TAKE_OVER", caseId: c.id })}>
-                Take over
-              </ActionButton>
-            )}
-            {!closed && takenByMe && (
-              <ActionButton icon={<Undo2 />} tone="primary" onClick={() => dispatch({ type: "RETURN_TO_VANI", caseId: c.id })}>
-                Return to Vani
-              </ActionButton>
-            )}
-          </div>
-        </div>
 
-        {!closed && (c.handoverNote || c.conversation === "urgent") && (
-          <div
-            className={cn(
-              "flex items-center gap-2 border-t px-5 py-2 text-xs font-medium",
-              c.conversation === "urgent" ? "border-[#F6CACB] bg-[#FCE4E4] text-status-urgent" : "border-[#F8D6BD] bg-[#FDEBDD] text-[#B4561A]",
-            )}
-          >
-            <ShieldAlert className="size-4" /> {c.handoverNote ?? "Danger sign detected by rule — doctor review needed."}
-          </div>
-        )}
-
-        {!closed && (
-          <div className="space-y-2 border-t border-steel-100 px-5 py-3">
-            <div className="flex flex-wrap gap-2">
-              {!c.coordinatorId && account.role === "coordinator" && (
-                <ActionButton icon={<UserPlus />} onClick={() => dispatch({ type: "ASSIGN_TO_ME", caseId: c.id })}>
-                  Assign to me
-                </ActionButton>
-              )}
-              <ActionButton icon={<CalendarPlus />} onClick={() => setShowSchedule((v) => !v)}>
-                Schedule visit
-              </ActionButton>
-              <ActionButton
-                icon={<CheckCircle2 />}
-                onClick={() => {
-                  dispatch({ type: "RECORD_VISIT", caseId: c.id, inTarget: false });
-                  toast.success("Visit recorded", { description: "Status → In treatment" });
-                }}
+            {!closed && (c.handoverNote || c.conversation === "urgent") && (
+              <div
+                className={cn(
+                  "flex items-center gap-2 border-t px-4 py-1.5 text-[11.5px] font-medium",
+                  c.conversation === "urgent" ? "border-[#F6CACB] bg-[#FCE4E4] text-status-urgent" : "border-[#F8D6BD] bg-[#FDEBDD] text-[#B4561A]",
+                )}
               >
-                Record visit
-              </ActionButton>
-              <ActionButton
-                icon={<CheckCircle2 />}
-                onClick={() => {
-                  dispatch({ type: "RECORD_VISIT", caseId: c.id, inTarget: true });
-                  toast.success("Visit recorded · BP in target");
-                }}
-              >
-                Record visit (BP in target)
-              </ActionButton>
-              {!c.escalated && c.conversation !== "urgent" && (
-                <ActionButton
-                  icon={<Stethoscope />}
-                  tone="danger"
-                  onClick={() => {
-                    dispatch({ type: "ESCALATE", caseId: c.id, note: "Needs clinical review" });
-                    toast("Escalated to doctor");
-                  }}
-                >
-                  Escalate to doctor
-                </ActionButton>
-              )}
-              <span className="flex-1" />
-              <ActionButton icon={<ClipboardCheck />} onClick={() => setCloseOpen(true)}>
-                Close case…
-              </ActionButton>
-            </div>
-            {showSchedule && <ScheduleForm state={state} c={c} onDone={() => setShowSchedule(false)} />}
-          </div>
-        )}
-      </section>
+                <ShieldAlert className="size-3.5 shrink-0" /> {c.handoverNote ?? "Danger sign detected by rule — doctor review needed."}
+              </div>
+            )}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <div className="space-y-6">
+            {!closed && (
+              <div className="space-y-2 border-t border-steel-100 px-4 py-2.5">
+                <div className="flex flex-wrap gap-1.5">
+                  {!c.coordinatorId && account.role === "coordinator" && (
+                    <ActionButton icon={<UserPlus />} onClick={() => dispatch({ type: "ASSIGN_TO_ME", caseId: c.id })}>
+                      Assign to me
+                    </ActionButton>
+                  )}
+                  <ActionButton icon={<CalendarPlus />} onClick={() => setShowSchedule((v) => !v)}>
+                    Schedule visit
+                  </ActionButton>
+                  <ActionButton
+                    icon={<CheckCircle2 />}
+                    onClick={() => {
+                      dispatch({ type: "RECORD_VISIT", caseId: c.id, inTarget: false });
+                      toast.success("Visit recorded", { description: "Status → In treatment" });
+                    }}
+                  >
+                    Record visit
+                  </ActionButton>
+                  <ActionButton
+                    icon={<CheckCircle2 />}
+                    onClick={() => {
+                      dispatch({ type: "RECORD_VISIT", caseId: c.id, inTarget: true });
+                      toast.success("Visit recorded · BP in target");
+                    }}
+                  >
+                    Record visit (BP in target)
+                  </ActionButton>
+                  {!c.escalated && c.conversation !== "urgent" && (
+                    <ActionButton
+                      icon={<Stethoscope />}
+                      tone="danger"
+                      onClick={() => {
+                        dispatch({ type: "ESCALATE", caseId: c.id, note: "Needs clinical review" });
+                        toast("Escalated to doctor");
+                      }}
+                    >
+                      Escalate to doctor
+                    </ActionButton>
+                  )}
+                  <span className="flex-1" />
+                  <ActionButton icon={<ClipboardCheck />} onClick={() => setCloseOpen(true)}>
+                    Close case…
+                  </ActionButton>
+                </div>
+                {showSchedule && <ScheduleForm state={state} c={c} onDone={() => setShowSchedule(false)} />}
+              </div>
+            )}
+          </section>
+
           <Panel icon={<History />} title="Case timeline" subtitle="Every step, with who did it and when">
             <ol className="relative space-y-3 border-l border-steel-100 pl-4">
               {timeline.map((t) => (
@@ -426,7 +428,10 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           )}
         </div>
 
-        <WhatsAppChat c={c} patientName={patient.name} />
+        {/* Right 30%: Sticky WhatsApp Chat (Aligned with Breadcrumb & Fit to Viewport) */}
+        <div className="lg:sticky lg:top-[4.75rem] lg:self-start">
+          <WhatsAppChat c={c} patientName={patient.name} className="h-[calc(100vh-6rem)] min-h-[480px]" />
+        </div>
       </div>
 
       <CloseDialog c={c} open={closeOpen} onOpenChange={setCloseOpen} />

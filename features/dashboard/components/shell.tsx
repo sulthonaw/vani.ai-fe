@@ -183,6 +183,29 @@ function ShellSkeleton() {
   );
 }
 
+function MainViewport({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isFlushQueue = pathname === "/dashboard/doctor-queue";
+  const isCaseDetail = pathname.startsWith("/dashboard/cases/");
+
+  return (
+    <main
+      className={cn(
+        "flex-1",
+        isFlushQueue
+          ? "h-[calc(100vh-3.5rem)] overflow-hidden p-0"
+          : isCaseDetail
+            ? "px-4 py-4 md:px-8 md:py-5"
+            : "px-4 py-6 md:px-8 md:py-8",
+      )}
+    >
+      <div className={cn("w-full", isFlushQueue ? "h-full" : "mx-auto max-w-[1400px]")}>
+        <RoleGuard>{children}</RoleGuard>
+      </div>
+    </main>
+  );
+}
+
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <DemoStoreProvider fallback={<ShellSkeleton />}>
@@ -192,13 +215,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </React.Suspense>
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar />
-          <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
-            <div className="mx-auto w-full max-w-[1400px]">
-              <React.Suspense fallback={null}>
-                <RoleGuard>{children}</RoleGuard>
-              </React.Suspense>
-            </div>
-          </main>
+          <React.Suspense fallback={null}>
+            <MainViewport>{children}</MainViewport>
+          </React.Suspense>
         </div>
         <Toaster position="top-center" theme="light" />
       </div>
