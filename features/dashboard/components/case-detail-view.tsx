@@ -146,11 +146,14 @@ function EscalateDoctorDialog({
   );
   const [selectedDoctorId, setSelectedDoctorId] = React.useState<string>(defaultSelected);
 
-  React.useEffect(() => {
-    if (open) {
-      setSelectedDoctorId(defaultSelected);
-    }
-  }, [open, defaultSelected]);
+  // Preselect the recommended doctor each time the dialog opens (or the recommendation changes while open).
+  // Adjusting state during render avoids an extra effect pass (react.dev: "You might not need an effect").
+  const [syncedFor, setSyncedFor] = React.useState<string | null>(null);
+  const syncKey = open ? defaultSelected : null;
+  if (syncKey !== syncedFor) {
+    setSyncedFor(syncKey);
+    if (syncKey !== null) setSelectedDoctorId(syncKey);
+  }
 
   const selectedDoc = doctorStats.find((d) => d.id === selectedDoctorId && d.available);
 

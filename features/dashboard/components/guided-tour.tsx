@@ -179,12 +179,20 @@ function markSeen() {
   }
 }
 
+type Box = { top: number; left: number; width: number; height: number };
+
+const sameBox = (a: Box | null, b: Box | null) =>
+  !!a && !!b && Math.abs(a.top - b.top) < 0.5 && Math.abs(a.left - b.left) < 0.5 && Math.abs(a.width - b.width) < 0.5 && Math.abs(a.height - b.height) < 0.5;
+
 export function TourProvider({ children }: { children: React.ReactNode }) {
   const { state, dispatch, reset } = useDemoStore();
   const router = useRouter();
   const pathname = usePathname();
   const [index, setIndex] = React.useState<number | null>(null);
-  const [rect, setRect] = React.useState<DOMRect | null>(null);
+  /** Last highlighted box. It is kept while the next target loads, so the spotlight glides instead of flashing. */
+  const [box, setBox] = React.useState<Box | null>(null);
+  /** Id of the step whose target has been found. */
+  const [foundFor, setFoundFor] = React.useState<string | null>(null);
   const direction = React.useRef<1 | -1>(1);
   const ctxRef = React.useRef<Ctx>({ state, dispatch, reset });
   // Keep the latest demo context for step actions (updated before other effects run).
@@ -196,13 +204,15 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 
   const close = React.useCallback((how: "skip" | "finish") => {
     setIndex(null);
-    setRect(null);
+    setBox(null);
+    setFoundFor(null);
     markSeen();
     if (how === "skip") toast("Tour skipped", { description: "Press Help in the top bar to replay it." });
   }, []);
 
   const start = React.useCallback(() => {
     direction.current = 1;
+    setFoundFor(null);
     setIndex(0);
   }, []);
 
@@ -219,18 +229,21 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearTimeout(t);
   }, [start]);
 
-  const go = React.useCallback((to: number) => {
-    if (to < 0) return;
-    if (to >= STEPS.length) {
-      setIndex(null);
-      setRect(null);
-      markSeen();
-      return;
-    }
-    direction.current = to >= (index ?? 0) ? 1 : -1;
-    setRect(null);
-    setIndex(to);
-  }, [index]);
+  const go = React.useCallback(
+    (to: number) => {
+      if (to < 0) return;
+      if (to >= STEPS.length) {
+        setIndex(null);
+        setBox(null);
+        setFoundFor(null);
+        markSeen();
+        return;
+      }
+      direction.current = to >= (index ?? 0) ? 1 : -1;
+      setIndex(to);
+    },
+    [index],
+  );
 
   // Enter a step: apply its skip condition, account and route.
   React.useEffect(() => {
@@ -244,30 +257,40 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     if (step.route && pathname !== step.route) router.push(step.route);
   }, [step, index, pathname, router, go]);
 
-  // Find and follow the highlighted element. If it never appears, skip the step.
+  // Follow the target every animation frame (smooth while the page scrolls).
+  // Steps without a target glide to the centre. A target that never appears is skipped.
   React.useEffect(() => {
     if (!step || index === null) return;
-    if (!step.target) return;
-    let tries = 0;
+    let raf = 0;
     let scrolled = false;
-    const timer = window.setInterval(() => {
-      const el = document.querySelector<HTMLElement>(step.target!);
-      const onRoute = !step.route || window.location.pathname === step.route;
-      if (el && onRoute) {
-        if (!scrolled) {
-          el.scrollIntoView({ block: "center", behavior: "smooth" });
-          scrolled = true;
-        }
-        setRect(el.getBoundingClientRect());
+    const startedAt = performance.now();
+    const tick = () => {
+      if (!step.target) {
+        const centre = { top: window.innerHeight / 2, left: window.innerWidth / 2, width: 0, height: 0 };
+        setBox((prev) => (sameBox(prev, centre) ? prev : centre));
+        setFoundFor(step.id);
         return;
       }
-      tries += 1;
-      if (tries > 25) {
-        window.clearInterval(timer);
+      const el = document.querySelector<HTMLElement>(step.target);
+      const onRoute = !step.route || window.location.pathname === step.route;
+      if (el && onRoute) {
+        const r = el.getBoundingClientRect();
+        if (!scrolled) {
+          scrolled = true;
+          const fits = r.top >= 72 && r.bottom <= window.innerHeight - 16;
+          if (!fits) el.scrollIntoView({ block: r.height > window.innerHeight * 0.6 ? "start" : "center", behavior: "smooth" });
+        }
+        const next = { top: r.top, left: r.left, width: r.width, height: r.height };
+        setBox((prev) => (sameBox(prev, next) ? prev : next));
+        setFoundFor((prev) => (prev === step.id ? prev : step.id));
+      } else if (performance.now() - startedAt > 3000) {
         go(index + direction.current);
+        return;
       }
-    }, 120);
-    return () => window.clearInterval(timer);
+      raf = window.requestAnimationFrame(tick);
+    };
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
   }, [step, index, go]);
 
   const next = () => {
@@ -277,7 +300,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     else go(index + 1);
   };
 
-  // Keyboard: → next, ← back, Esc skip.
+  // Keyboard: ← back, Esc skip.
   React.useEffect(() => {
     if (index === null) return;
     const onKey = (e: KeyboardEvent) => {
@@ -298,8 +321,8 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
           step={step}
           index={index}
           total={STEPS.length}
-          rect={step.target ? rect : null}
-          waiting={!!step.target && !rect}
+          box={box}
+          ready={foundFor === step.id}
           onNext={next}
           onBack={() => go(index - 1)}
           onSkip={() => close("skip")}
@@ -314,14 +337,25 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 /* ------------------------------------------------------------------ */
 
 const PAD = 8;
-const CARD_W = 360;
+const GAP = 14;
+const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+
+function useViewport() {
+  const [vp, setVp] = React.useState(() => ({ w: window.innerWidth, h: window.innerHeight }));
+  React.useEffect(() => {
+    const onResize = () => setVp({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return vp;
+}
 
 function TourOverlay({
   step,
   index,
   total,
-  rect,
-  waiting,
+  box,
+  ready,
   onNext,
   onBack,
   onSkip,
@@ -329,76 +363,103 @@ function TourOverlay({
   step: Step;
   index: number;
   total: number;
-  rect: DOMRect | null;
-  waiting: boolean;
+  box: Box | null;
+  ready: boolean;
   onNext: () => void;
   onBack: () => void;
   onSkip: () => void;
 }) {
-  const centered = !rect;
-  const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
-  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+  const vp = useViewport();
+  const cardRef = React.useRef<HTMLDivElement>(null);
+  const [cardH, setCardH] = React.useState(240);
 
-  // Place the card below the target, or above it, or beside it when there is no room.
-  let cardStyle: React.CSSProperties = {};
-  if (rect) {
-    const spaceBelow = vh - rect.bottom;
-    const spaceAbove = rect.top;
-    const left = Math.min(Math.max(16, rect.left), vw - CARD_W - 16);
-    if (spaceBelow > 230) cardStyle = { top: rect.bottom + PAD + 12, left };
-    else if (spaceAbove > 230) cardStyle = { bottom: vh - rect.top + PAD + 12, left };
-    else cardStyle = { top: Math.max(16, Math.min(rect.top, vh - 260)), left: rect.right + 24 + CARD_W < vw ? rect.right + 24 : Math.max(16, rect.left - CARD_W - 24) };
+  // Track the card height so it can be placed precisely (and slide, not jump).
+  React.useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setCardH(Math.round(entry.contentRect.height + 42)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const cw = Math.min(360, vp.w - 32);
+  const target = box ?? { top: vp.h / 2, left: vp.w / 2, width: 0, height: 0 };
+  const hasHole = target.width > 0 && target.height > 0;
+
+  // One positioning model (top/left) for every case, so the card always glides.
+  let top: number;
+  let left: number;
+  if (!hasHole) {
+    top = (vp.h - cardH) / 2;
+    left = (vp.w - cw) / 2;
+  } else {
+    const below = vp.h - (target.top + target.height);
+    const above = target.top;
+    left = Math.min(Math.max(16, target.left), vp.w - cw - 16);
+    if (below > cardH + GAP + PAD + 8) top = target.top + target.height + PAD + GAP;
+    else if (above > cardH + GAP + PAD + 8) top = target.top - PAD - GAP - cardH;
+    else if (target.left + target.width + GAP + cw + 16 < vp.w) {
+      left = target.left + target.width + PAD + GAP;
+      top = Math.min(Math.max(16, target.top), vp.h - cardH - 16);
+    } else if (target.left - GAP - cw - 16 > 0) {
+      left = target.left - PAD - GAP - cw;
+      top = Math.min(Math.max(16, target.top), vp.h - cardH - 16);
+    } else {
+      // Very large target (e.g. the map): sit inside it, bottom-right.
+      left = vp.w - cw - 24;
+      top = vp.h - cardH - 24;
+    }
   }
+
+  const glide = `top 420ms ${EASE}, left 420ms ${EASE}, width 420ms ${EASE}, height 420ms ${EASE}, opacity 300ms ease`;
 
   return (
     <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label={step.title}>
-      {/* Dim layer with a cut-out around the target */}
-      {rect ? (
-        <div
-          className="pointer-events-none fixed rounded-xl ring-2 ring-white/90 transition-all duration-300 ease-out"
-          style={{
-            top: rect.top - PAD,
-            left: rect.left - PAD,
-            width: rect.width + PAD * 2,
-            height: rect.height + PAD * 2,
-            boxShadow: "0 0 0 9999px rgba(6,18,36,0.55)",
-          }}
-        />
-      ) : (
-        <div className="fixed inset-0 bg-[rgba(6,18,36,0.55)] transition-opacity" />
-      )}
+      {/* Spotlight: always mounted, it glides from one target to the next and shrinks to the centre for intro/outro. */}
+      <div
+        className="pointer-events-none fixed rounded-xl"
+        style={{
+          top: target.top - (hasHole ? PAD : 0),
+          left: target.left - (hasHole ? PAD : 0),
+          width: target.width + (hasHole ? PAD * 2 : 0),
+          height: target.height + (hasHole ? PAD * 2 : 0),
+          boxShadow: `0 0 0 9999px rgba(6,18,36,${hasHole ? 0.55 : 0.6}), 0 0 0 ${hasHole ? 2 : 0}px rgba(255,255,255,0.9)`,
+          transition: glide + ", box-shadow 420ms ease",
+          willChange: "top, left, width, height",
+        }}
+      />
       {/* Click shield: the demo is driven from the card while the tour runs */}
       <div className="fixed inset-0" onClick={(e) => e.stopPropagation()} />
 
       <div
-        className={cn(
-          "fixed w-[min(360px,calc(100vw-32px))] rounded-xl border border-[#E8EBF1] bg-white p-5 shadow-[0_24px_60px_-12px_rgba(6,18,36,0.45)] transition-[top,left,bottom] duration-300 ease-out",
-          centered && "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
-        )}
-        style={centered ? undefined : cardStyle}
+        ref={cardRef}
+        className="fixed rounded-xl border border-[#E8EBF1] bg-white p-5 shadow-[0_24px_60px_-12px_rgba(6,18,36,0.45)]"
+        style={{ top, left, width: cw, transition: glide, willChange: "top, left" }}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            {(index === 0 || index === total - 1) && (
-              <span className="grid size-9 place-items-center rounded-full bg-[#F1F3F7]">
-                <Image src="/images/vani-icon.png" alt="" width={123} height={91} className="h-4 w-auto" />
-              </span>
-            )}
-            <p className="text-[11px] font-medium text-steel-500">
-              Step {index + 1} of {total}
-            </p>
+        {/* Content fades in per step, while the card itself slides */}
+        <div key={step.id} className="animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              {(index === 0 || index === total - 1) && (
+                <span className="grid size-9 place-items-center rounded-full bg-[#F1F3F7]">
+                  <Image src="/images/vani-icon.png" alt="" width={123} height={91} className="h-4 w-auto" />
+                </span>
+              )}
+              <p className="text-[11px] font-medium text-steel-500">
+                Step {index + 1} of {total}
+              </p>
+            </div>
+            <button onClick={onSkip} className="-mt-1 -mr-1 grid size-7 place-items-center rounded-md text-steel-300 hover:bg-[#F1F3F7] hover:text-navy-950" aria-label="Skip tour">
+              <X className="size-4" />
+            </button>
           </div>
-          <button onClick={onSkip} className="-mt-1 -mr-1 grid size-7 place-items-center rounded-md text-steel-300 hover:bg-[#F1F3F7] hover:text-navy-950" aria-label="Skip tour">
-            <X className="size-4" />
-          </button>
+          <h3 className="mt-2 text-[15px] font-semibold text-navy-950">{step.title}</h3>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-steel-500">{step.body}</p>
         </div>
-        <h3 className="mt-2 text-[15px] font-semibold text-navy-950">{step.title}</h3>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-steel-500">{step.body}</p>
-        {waiting && <p className="mt-2 text-[11px] text-steel-300">Opening the page…</p>}
 
         <div className="mt-4 flex gap-1">
           {Array.from({ length: total }).map((_, i) => (
-            <span key={i} className={cn("h-1 flex-1 rounded-full", i <= index ? "bg-navy-900" : "bg-[#E8EBF1]")} />
+            <span key={i} className={cn("h-1 flex-1 rounded-full transition-colors duration-300", i <= index ? "bg-navy-900" : "bg-[#E8EBF1]")} />
           ))}
         </div>
 
@@ -414,10 +475,18 @@ function TourOverlay({
           )}
           <button
             onClick={onNext}
-            disabled={waiting}
-            className="inline-flex h-8 items-center gap-1 rounded-lg bg-navy-900 px-3 text-xs font-semibold text-white transition hover:bg-navy-800 disabled:opacity-50"
+            disabled={!ready}
+            className="inline-flex h-8 min-w-20 items-center justify-center gap-1 rounded-lg bg-navy-900 px-3 text-xs font-semibold text-white transition hover:bg-navy-800 disabled:opacity-60"
           >
-            {step.actionLabel ?? "Next"} {index < total - 1 && <ArrowRight className="size-3.5" />}
+            {ready ? (
+              <>
+                {step.actionLabel ?? "Next"} {index < total - 1 && <ArrowRight className="size-3.5" />}
+              </>
+            ) : (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-3 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Loading
+              </span>
+            )}
           </button>
         </div>
       </div>

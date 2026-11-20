@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { VaniMapView } from "@/features/dashboard";
 
 export default function Page() {
@@ -6,3 +7,5 @@ export default function Page() {
 
 // The dashboard renders on the client (demo state lives in localStorage), so opt out of instant-navigation validation.
 export const instant = false;
+
+export const metadata: Metadata = { title: "Vani Map" };
