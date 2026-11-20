@@ -167,8 +167,8 @@ const STEPS: Step[] = [
 
 const SEEN_KEY = "vani-tour-seen";
 
-type TourValue = { start: () => void; active: boolean };
-const TourContext = React.createContext<TourValue>({ start: () => {}, active: false });
+type TourValue = { start: () => void; active: boolean; hint: boolean; dismissHint: () => void };
+const TourContext = React.createContext<TourValue>({ start: () => {}, active: false, hint: false, dismissHint: () => {} });
 export const useTour = () => React.useContext(TourContext);
 
 function markSeen() {
@@ -189,6 +189,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [index, setIndex] = React.useState<number | null>(null);
+  const [hint, setHint] = React.useState(false);
   /** Last highlighted box. It is kept while the next target loads, so the spotlight glides instead of flashing. */
   const [box, setBox] = React.useState<Box | null>(null);
   /** Id of the step whose target has been found. */
@@ -210,13 +211,20 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     if (how === "skip") toast("Tour skipped", { description: "Press Help in the top bar to replay it." });
   }, []);
 
+  const dismissHint = React.useCallback(() => {
+    setHint(false);
+    markSeen();
+  }, []);
+
   const start = React.useCallback(() => {
     direction.current = 1;
+    setHint(false);
+    markSeen();
     setFoundFor(null);
     setIndex(0);
   }, []);
 
-  // First visit: start automatically once.
+  // First visit: highlight the Help button and show a brief tooltip underneath instead of blocking the screen.
   React.useEffect(() => {
     let seen = true;
     try {
@@ -225,9 +233,16 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
       /* ignore */
     }
     if (seen) return;
-    const t = window.setTimeout(start, 700);
-    return () => window.clearTimeout(t);
-  }, [start]);
+    const showTimer = window.setTimeout(() => setHint(true), 450);
+    const hideTimer = window.setTimeout(() => {
+      setHint(false);
+      markSeen();
+    }, 5500);
+    return () => {
+      window.clearTimeout(showTimer);
+      window.clearTimeout(hideTimer);
+    };
+  }, []);
 
   const go = React.useCallback(
     (to: number) => {
@@ -311,7 +326,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [index, go, close]);
 
-  const value = React.useMemo(() => ({ start, active: index !== null }), [start, index]);
+  const value = React.useMemo(() => ({ start, active: index !== null, hint, dismissHint }), [start, index, hint, dismissHint]);
 
   return (
     <TourContext.Provider value={value}>

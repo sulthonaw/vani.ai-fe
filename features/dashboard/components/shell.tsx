@@ -116,18 +116,53 @@ function DemoClock() {
 }
 
 function HelpButton() {
-  const { start, active } = useTour();
+  const { start, active, hint, dismissHint } = useTour();
   return (
-    <button
-      onClick={start}
-      disabled={active}
-      data-tour="help"
-      className="flex h-8 items-center gap-1.5 rounded-lg border border-[#E8EBF1] bg-white px-2.5 text-xs font-medium text-navy-800 transition hover:bg-[#F7F8FA] disabled:opacity-50"
-      aria-label="Open the guided tour"
-    >
-      <CircleHelp className="size-4 text-steel-500" />
-      <span className="hidden sm:inline">Help</span>
-    </button>
+    <div className="relative">
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              onClick={start}
+              onMouseEnter={() => {
+                if (hint) dismissHint();
+              }}
+              disabled={active}
+              data-tour="help"
+              className={cn(
+                "relative flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition disabled:opacity-50",
+                hint
+                  ? "border-brand-500 bg-[#EEF4FF] text-brand-700 ring-4 ring-brand-500/20 shadow-sm"
+                  : "border-[#E8EBF1] bg-white text-navy-800 hover:bg-[#F7F8FA]",
+              )}
+              aria-label="Open the guided tour"
+            />
+          }
+        >
+          <CircleHelp className={cn("size-4", hint ? "text-brand-600" : "text-steel-500")} />
+          <span className="hidden sm:inline">Help</span>
+          {hint && (
+            <span className="absolute -top-1 -right-1 flex size-2.5" aria-hidden="true">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand-500 opacity-75" />
+              <span className="relative inline-flex size-2.5 rounded-full bg-brand-600" />
+            </span>
+          )}
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Guided 2-minute tour</TooltipContent>
+      </Tooltip>
+
+      {hint && (
+        <div
+          role="status"
+          className="animate-in fade-in slide-in-from-top-1 absolute top-full right-0 z-50 mt-2.5 w-60 rounded-xl border border-navy-800/10 bg-navy-950 px-3 py-2 text-xs text-white shadow-lg"
+        >
+          <span className="absolute -top-1 right-4 size-2 rotate-45 bg-navy-950" aria-hidden="true" />
+          <p className="font-medium leading-snug">
+            New here? Click <span className="font-semibold text-sky-300">Help</span> for a quick guided tour.
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
 
