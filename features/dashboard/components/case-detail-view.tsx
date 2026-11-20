@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   CalendarPlus,
@@ -25,6 +26,16 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -296,6 +307,74 @@ function EscalateDoctorDialog({
   );
 }
 
+function RecordVisitDialog({ c, open, onOpenChange }: { c: CaseRecord; open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { dispatch } = useDemoStore();
+  const [inTarget, setInTarget] = React.useState(true);
+  const options = [
+    {
+      value: true,
+      title: "Record visit (BP in target)",
+      description: `Counts toward the 2 in-target visits needed for Controlled (${c.visitsInTarget}/2 recorded).`,
+    },
+    {
+      value: false,
+      title: "Record visit (BP above target)",
+      description: "Logs attendance and keeps the case in treatment.",
+    },
+  ];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Record clinic visit</DialogTitle>
+          <DialogDescription>Select the patient&apos;s blood pressure reading for this visit.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          {options.map((opt) => {
+            const selected = inTarget === opt.value;
+            return (
+              <label
+                key={String(opt.value)}
+                className={cn(
+                  "flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition",
+                  selected ? "border-brand-500 bg-tint" : "border-steel-100 hover:bg-surface",
+                )}
+              >
+                <Checkbox checked={selected} onCheckedChange={() => setInTarget(opt.value)} className="mt-0.5 rounded-full" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-navy-950">{opt.title}</p>
+                  <p className="text-xs text-steel-500">{opt.description}</p>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="h-8 text-xs">
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => {
+              dispatch({ type: "RECORD_VISIT", caseId: c.id, inTarget });
+              if (inTarget) {
+                toast.success("Visit recorded · BP in target");
+              } else {
+                toast.success("Visit recorded", { description: "Status → In treatment" });
+              }
+              onOpenChange(false);
+            }}
+            className="h-8 bg-brand-700 text-xs font-semibold text-white hover:bg-brand-600"
+          >
+            Record visit
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function CloseDialog({ c, open, onOpenChange }: { c: CaseRecord; open: boolean; onOpenChange: (v: boolean) => void }) {
   const { dispatch } = useDemoStore();
   const account = useActiveAccount();
@@ -400,6 +479,9 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const account = useActiveAccount();
   const c = state.cases.find((x) => x.id === caseId);
   const [showSchedule, setShowSchedule] = React.useState(false);
+  const [takeOverOpen, setTakeOverOpen] = React.useState(false);
+  const [returnToVaniOpen, setReturnToVaniOpen] = React.useState(false);
+  const [recordVisitOpen, setRecordVisitOpen] = React.useState(false);
   const [closeOpen, setCloseOpen] = React.useState(false);
   const [escalateOpen, setEscalateOpen] = React.useState(false);
   const [clinicalNote, setClinicalNote] = React.useState("");
@@ -472,12 +554,16 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
               </div>
               <div className="flex items-center gap-2">
                 {!closed && !c.takeoverBy && (
-                  <ActionButton icon={<Hand />} tone="primary" onClick={() => dispatch({ type: "TAKE_OVER", caseId: c.id })}>
+                  <ActionButton icon={<Hand />} tone="primary" onClick={() => setTakeOverOpen(true)}>
                     Take over
                   </ActionButton>
                 )}
                 {!closed && takenByMe && (
-                  <ActionButton icon={<Undo2 />} tone="primary" onClick={() => dispatch({ type: "RETURN_TO_VANI", caseId: c.id })}>
+                  <ActionButton
+                    icon={<Image src="/images/vani-icon.png" alt="Vani" width={123} height={91} className="h-3 w-auto brightness-0 invert" />}
+                    tone="primary"
+                    onClick={() => setReturnToVaniOpen(true)}
+                  >
                     Return to Vani
                   </ActionButton>
                 )}
@@ -506,23 +592,8 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                   <ActionButton icon={<CalendarPlus />} onClick={() => setShowSchedule((v) => !v)}>
                     Schedule visit
                   </ActionButton>
-                  <ActionButton
-                    icon={<CheckCircle2 />}
-                    onClick={() => {
-                      dispatch({ type: "RECORD_VISIT", caseId: c.id, inTarget: false });
-                      toast.success("Visit recorded", { description: "Status → In treatment" });
-                    }}
-                  >
-                    Record visit
-                  </ActionButton>
-                  <ActionButton
-                    icon={<CheckCircle2 />}
-                    onClick={() => {
-                      dispatch({ type: "RECORD_VISIT", caseId: c.id, inTarget: true });
-                      toast.success("Visit recorded · BP in target");
-                    }}
-                  >
-                    Record visit (BP in target)
+                  <ActionButton icon={<CheckCircle2 />} onClick={() => setRecordVisitOpen(true)}>
+                    Record visit…
                   </ActionButton>
                   {!c.escalated && c.conversation !== "urgent" && (
                     <ActionButton
@@ -646,6 +717,55 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         </div>
       </div>
 
+      <AlertDialog open={takeOverOpen} onOpenChange={setTakeOverOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Take over conversation from Vani?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vani&apos;s automated follow-up messages for {patient.name} will be paused while you handle this case directly. You can return control to Vani at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                dispatch({ type: "TAKE_OVER", caseId: c.id });
+                toast.success("You took over from Vani", {
+                  description: "Automated reminders are paused until you return the case.",
+                });
+                setTakeOverOpen(false);
+              }}
+            >
+              Take over
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={returnToVaniOpen} onOpenChange={setReturnToVaniOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Return conversation to Vani?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vani will resume automated follow-up reminders and message handling for {patient.name}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                dispatch({ type: "RETURN_TO_VANI", caseId: c.id });
+                toast.success("Returned to Vani", {
+                  description: "Automated reminders have resumed for this patient.",
+                });
+                setReturnToVaniOpen(false);
+              }}
+            >
+              Return to Vani
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <RecordVisitDialog c={c} open={recordVisitOpen} onOpenChange={setRecordVisitOpen} />
       <EscalateDoctorDialog c={c} open={escalateOpen} onOpenChange={setEscalateOpen} />
       <CloseDialog c={c} open={closeOpen} onOpenChange={setCloseOpen} />
     </div>
