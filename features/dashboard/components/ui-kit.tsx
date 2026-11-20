@@ -31,10 +31,13 @@ export function Panel({
   footer,
   className,
   bodyClassName,
+  tourId,
   children,
 }: {
   /** Kept for API compatibility; icons are no longer shown in card headers. */
   icon?: React.ReactNode;
+  /** Anchor for the guided tour (rendered as data-tour). */
+  tourId?: string;
   title: string;
   subtitle?: string;
   actions?: React.ReactNode;
@@ -57,7 +60,7 @@ export function Panel({
       </button>
     ));
   return (
-    <section className={cn("flex flex-col overflow-hidden rounded-xl border border-[#E8EBF1] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]", className)}>
+    <section data-tour={tourId} className={cn("flex flex-col overflow-hidden rounded-xl border border-[#E8EBF1] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]", className)}>
       <header className="flex items-start gap-3 px-5 pt-4 pb-3">
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-semibold text-navy-950">{title}</h2>

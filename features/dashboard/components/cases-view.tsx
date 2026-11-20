@@ -162,6 +162,7 @@ export function CasesView() {
       <PageHeader title="Cases" description="Every abnormal screening result is a case with an owner, until it is closed with evidence." />
 
       <Panel
+        tourId="cases-table"
         title={`${rows.length} case${rows.length === 1 ? "" : "s"}`}
         subtitle={owner === "mine" ? `Assigned to ${account.name}, plus unassigned` : owner === "vani" ? "Currently handled by Vani" : "All cases at this facility"}
         actions={

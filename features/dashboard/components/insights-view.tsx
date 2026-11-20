@@ -38,7 +38,7 @@ export function InsightsView() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <Panel icon={<Filter />} title="Case funnel" subtitle="How far each abnormal result has progressed">
+        <Panel tourId="insights" icon={<Filter />} title="Case funnel" subtitle="How far each abnormal result has progressed">
           <ul className="space-y-3">
             {f.map((s, i) => (
               <li key={s.key}>

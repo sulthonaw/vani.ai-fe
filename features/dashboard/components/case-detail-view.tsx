@@ -435,7 +435,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           <CaseBreadcrumb name={patient.name} />
 
           {/* Compact Header */}
-          <section className="rounded-xl border border-[#E8EBF1] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <section data-tour="case-header" className="rounded-xl border border-[#E8EBF1] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
             <div className="flex flex-wrap items-start gap-3 px-4 py-3">
               <Initials name={patient.name} avatarUrl={patientAvatar} className="size-10 text-xs" />
               <div className="min-w-0 flex-1">
@@ -540,7 +540,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             )}
           </section>
 
-          <Panel icon={<History />} title="Case timeline" subtitle="Every step, with who did it and when">
+          <Panel tourId="timeline" icon={<History />} title="Case timeline" subtitle="Every step, with who did it and when">
             <ol className="relative space-y-3 border-l border-steel-100 pl-4">
               {timeline.map((t) => (
                 <li key={t.id} className="relative">
@@ -638,7 +638,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         </div>
 
         {/* Right 30%: Sticky WhatsApp Chat (Aligned with Breadcrumb & Fit to Viewport) */}
-        <div className="lg:sticky lg:top-[4.75rem] lg:self-start">
+        <div data-tour="chat" className="lg:sticky lg:top-[4.75rem] lg:self-start">
           <WhatsAppChat c={c} patientName={patient.name} className="h-[calc(100vh-6rem)] min-h-[480px]" />
         </div>
       </div>

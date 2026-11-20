@@ -51,7 +51,7 @@ export function DoctorQueueView() {
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden bg-surface">
       {/* Left Panel: Contact List (Menempel langsung dengan Sidebar & TopBar, punya scroll sendiri) */}
-      <aside className="flex h-full min-h-0 w-76 shrink-0 flex-col border-r border-[#E8EBF1] bg-white xl:w-84">
+      <aside data-tour="doctor-queue" className="flex h-full min-h-0 w-76 shrink-0 flex-col border-r border-[#E8EBF1] bg-white xl:w-84">
         <div className="shrink-0 space-y-2.5 border-b border-[#EEF0F4] px-3.5 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

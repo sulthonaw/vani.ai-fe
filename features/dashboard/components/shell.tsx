@@ -4,7 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, ChevronsRight, ChevronRight } from "lucide-react";
+import { Bell, ChevronsRight, ChevronRight, CircleHelp } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/libs/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -12,6 +12,7 @@ import { ROLE_HOME, formatDay } from "../logic/constants";
 import { DemoStoreProvider, useActiveAccount, useDemoStore } from "../hooks/use-demo-store";
 import { NavbarAccountSwitcher, SidebarAccountSwitcher } from "./account-switcher";
 import { GlobalSearch } from "./global-search";
+import { TourProvider, useTour } from "./guided-tour";
 import { NAV, matchNav } from "./nav";
 
 function VaniLogo() {
@@ -91,7 +92,7 @@ function DemoClock() {
   const { state, dispatch } = useDemoStore();
   const button = "grid size-7 place-items-center text-steel-500 transition hover:bg-[#F1F3F7] hover:text-navy-950";
   return (
-    <div className="flex h-8 items-center overflow-hidden rounded-lg border border-[#E8EBF1] bg-white">
+    <div data-tour="clock" className="flex h-8 items-center overflow-hidden rounded-lg border border-[#E8EBF1] bg-white">
       <span className="flex items-center gap-2 px-3 text-xs">
         <span className="size-1.5 rounded-full bg-status-active" />
         <span className="font-semibold tabular-nums text-navy-950">Day {state.day}</span>
@@ -114,6 +115,22 @@ function DemoClock() {
   );
 }
 
+function HelpButton() {
+  const { start, active } = useTour();
+  return (
+    <button
+      onClick={start}
+      disabled={active}
+      data-tour="help"
+      className="flex h-8 items-center gap-1.5 rounded-lg border border-[#E8EBF1] bg-white px-2.5 text-xs font-medium text-navy-800 transition hover:bg-[#F7F8FA] disabled:opacity-50"
+      aria-label="Open the guided tour"
+    >
+      <CircleHelp className="size-4 text-steel-500" />
+      <span className="hidden sm:inline">Help</span>
+    </button>
+  );
+}
+
 function TopBar() {
   const { state } = useDemoStore();
   const account = useActiveAccount();
@@ -128,6 +145,7 @@ function TopBar() {
       <GlobalSearch pages={pages} />
       <div className="ml-auto flex items-center gap-2">
         <DemoClock />
+        <HelpButton />
         <Tooltip>
           <TooltipTrigger
             render={<button className="relative grid size-8 place-items-center rounded-lg text-steel-500 transition hover:bg-[#F1F3F7] hover:text-navy-950" aria-label="Notifications" />}
@@ -212,15 +230,15 @@ function MainViewport({ children }: { children: React.ReactNode }) {
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <DemoStoreProvider fallback={<ShellSkeleton />}>
-      <div lang="en" className="flex min-h-screen w-full bg-surface text-navy-900 antialiased">
-        <React.Suspense fallback={<div className="hidden w-60 shrink-0 border-r border-[#E8EBF1] bg-white md:block" />}>
-          <Sidebar />
-        </React.Suspense>
-        <React.Suspense fallback={null}>
-          <MainViewport>{children}</MainViewport>
-        </React.Suspense>
-        <Toaster position="top-center" theme="light" />
-      </div>
+      <React.Suspense fallback={null}>
+        <TourProvider>
+          <div lang="en" className="flex min-h-screen w-full bg-surface text-navy-900 antialiased">
+            <Sidebar />
+            <MainViewport>{children}</MainViewport>
+            <Toaster position="top-center" theme="light" />
+          </div>
+        </TourProvider>
+      </React.Suspense>
     </DemoStoreProvider>
   );
 }

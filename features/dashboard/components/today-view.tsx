@@ -18,7 +18,7 @@ import { Dot, Initials, PageHeader, Panel, Segmented, SyntheticTag } from "./ui-
 
 function KpiStrip({ items }: { items: { label: string; value: number; hint: string; dot?: string; href: string }[] }) {
   return (
-    <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-[#E8EBF1] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] lg:grid-cols-4">
+    <div data-tour="kpis" className="grid grid-cols-2 overflow-hidden rounded-xl border border-[#E8EBF1] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] lg:grid-cols-4">
       {items.map((k, i) => (
         <Link
           key={k.label}
@@ -55,7 +55,7 @@ function NeedsYou() {
   const account = useActiveAccount();
   const list = needsToday(state, account.id).slice(0, 7);
   return (
-    <Panel title="Needs you today" subtitle="Sorted by urgency. Vani handles everything else." footer={{ label: "All cases", href: "/dashboard/cases" }} bodyClassName="px-0 pb-1">
+    <Panel tourId="needs" title="Needs you today" subtitle="Sorted by urgency. Vani handles everything else." footer={{ label: "All cases", href: "/dashboard/cases" }} bodyClassName="px-0 pb-1">
       {list.length === 0 ? (
         <p className="px-5 pb-6 text-sm text-steel-500">Nothing needs you right now.</p>
       ) : (
