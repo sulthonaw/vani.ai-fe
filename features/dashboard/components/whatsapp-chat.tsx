@@ -24,10 +24,32 @@ const WA = {
 
 function DateChip({ day }: { day: number }) {
   return (
-    <div className="flex justify-center py-1" data-chat-item>
+    <div className="flex justify-center py-1" data-chat-item data-chat-kind="meta">
       <span className="rounded-md bg-white/90 px-2.5 py-1 text-[11px] font-medium text-[#54656F] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
         Day {day} · {formatDay(day)}
       </span>
+    </div>
+  );
+}
+
+function TypingBubble() {
+  return (
+    <div className="flex justify-start" data-typing-bubble style={{ display: "none" }}>
+      <div
+        className="relative flex items-center gap-1 rounded-lg rounded-tl-none px-3 py-2.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]"
+        style={{ background: WA.incoming }}
+      >
+        <span
+          className="absolute top-0 -left-2 size-2"
+          style={{
+            background: WA.incoming,
+            clipPath: "polygon(0 0, 100% 0, 100% 100%)",
+          }}
+        />
+        <span className="size-1.5 animate-bounce rounded-full bg-[#667781]/80 [animation-delay:0ms]" />
+        <span className="size-1.5 animate-bounce rounded-full bg-[#667781]/80 [animation-delay:150ms]" />
+        <span className="size-1.5 animate-bounce rounded-full bg-[#667781]/80 [animation-delay:300ms]" />
+      </div>
     </div>
   );
 }
@@ -37,7 +59,7 @@ function Bubble({ m }: { m: Message }) {
   const sender =
     m.from === "vani" ? "Vani · digital assistant" : m.from === "staff" ? m.senderName : m.from === "family" ? `${m.senderName} (family)` : m.senderName;
   return (
-    <div className={cn("flex", outgoing ? "justify-end" : "justify-start")} data-chat-item>
+    <div className={cn("flex", outgoing ? "justify-end" : "justify-start")} data-chat-item data-chat-kind={outgoing ? "outgoing" : "incoming"}>
       <div
         className={cn(
           "relative max-w-[78%] rounded-lg px-2.5 pt-1.5 pb-1 text-[13.5px] leading-snug text-[#111B21] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]",
@@ -93,32 +115,72 @@ export function WhatsAppChat({ c, patientName, className }: { c: CaseRecord; pat
   const takenByOther = !!c.takeoverBy && c.takeoverBy !== account.id;
   const canType = !closed && !takenByOther && account.role !== "manager";
 
-  // Simulation: reveal messages one by one (GSAP), and repeat while "loop" is on.
+  // Simulation: reveal messages slowly one by one (GSAP), showing a typing bubble before incoming user messages.
   React.useLayoutEffect(() => {
     const body = bodyRef.current;
     if (!body) return;
     const ctx = gsap.context(() => {
       const items = gsap.utils.toArray<HTMLElement>("[data-chat-item]", body);
+      const typingEl = body.querySelector<HTMLElement>("[data-typing-bubble]");
       if (!items.length) return;
       if (!loop) {
-        gsap.set(items, { autoAlpha: 1, y: 0, scale: 1 });
+        if (typingEl) gsap.set(typingEl, { display: "none", autoAlpha: 0 });
+        gsap.set(items, { display: "", autoAlpha: 1, y: 0, scale: 1 });
         body.scrollTop = body.scrollHeight;
         return;
       }
-      const follow = (el: HTMLElement) => {
-        body.scrollTop = Math.max(0, el.offsetTop + el.offsetHeight - body.clientHeight + 24);
+      const scrollToBottom = () => {
+        body.scrollTop = body.scrollHeight;
       };
-      const tl = gsap.timeline({ repeat: -1, repeatDelay: 2.5 });
-      tl.set(items, { autoAlpha: 0, y: 14, scale: 0.97 });
+      const tl = gsap.timeline({ repeat: -1, repeatDelay: 4.5 });
+      tl.set(items, { display: "none", autoAlpha: 0, y: 12, scale: 0.97 });
+      if (typingEl) {
+        tl.set(typingEl, { display: "none", autoAlpha: 0, y: 8, scale: 0.97 });
+      }
       tl.call(() => {
         body.scrollTop = 0;
       });
       items.forEach((el, i) => {
-        tl.to(el, { autoAlpha: 1, y: 0, scale: 1, duration: 0.35, ease: "power2.out", onStart: () => follow(el) }, i === 0 ? 0.3 : ">+0.45");
+        const kind = el.getAttribute("data-chat-kind");
+        const isIncoming = kind === "incoming";
+        const isMeta = kind === "meta";
+
+        if (isIncoming && typingEl) {
+          tl.set(typingEl, { display: "flex" }, i === 0 ? 0.4 : ">+0.85");
+          tl.to(typingEl, {
+            autoAlpha: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.25,
+            ease: "power2.out",
+            onStart: scrollToBottom,
+          });
+          tl.set(typingEl, { display: "none", autoAlpha: 0, y: 8, scale: 0.97 }, ">+1.35");
+          tl.set(el, { display: "" });
+          tl.to(el, {
+            autoAlpha: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.42,
+            ease: "power2.out",
+            onStart: scrollToBottom,
+          });
+        } else {
+          const pos = i === 0 ? 0.35 : isMeta ? ">+0.5" : ">+1.15";
+          tl.set(el, { display: "" }, pos);
+          tl.to(el, {
+            autoAlpha: 1,
+            y: 0,
+            scale: 1,
+            duration: isMeta ? 0.3 : 0.42,
+            ease: "power2.out",
+            onStart: scrollToBottom,
+          });
+        }
       });
     }, body);
     return () => ctx.revert();
-  }, [messages.length, loop]);
+  }, [messages.length, loop, c.id]);
 
   const send = () => {
     const text = draft.trim();
@@ -170,7 +232,7 @@ export function WhatsAppChat({ c, patientName, className }: { c: CaseRecord; pat
           backgroundSize: "18px 18px",
         }}
       >
-        <div className="mx-auto mb-2 max-w-sm rounded-md bg-[#FFEECD] px-2.5 py-1 text-center text-[10.5px] leading-snug text-[#54656F]" data-chat-item>
+        <div className="mx-auto mb-2 max-w-sm rounded-md bg-[#FFEECD] px-2.5 py-1 text-center text-[10.5px] leading-snug text-[#54656F]" data-chat-item data-chat-kind="meta">
           Simulated WhatsApp channel. Messages from Vani are automated; staff can reply at any time.
         </div>
         {messages.length === 0 && <p className="pt-10 text-center text-xs text-[#667781]">No messages yet.</p>}
@@ -180,6 +242,7 @@ export function WhatsAppChat({ c, patientName, className }: { c: CaseRecord; pat
             <Bubble m={m} />
           </React.Fragment>
         ))}
+        <TypingBubble />
       </div>
 
       {/* Composer */}

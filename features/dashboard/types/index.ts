@@ -9,6 +9,16 @@ export interface DemoAccount {
   avatar?: string;
 }
 
+export interface DoctorProfile {
+  id: string;
+  name: string;
+  specialty: string;
+  avatar: string;
+  available: boolean;
+  unavailableReason?: string;
+  basePatients: number;
+}
+
 export type CaseStatus =
   | "new"
   | "contacted"
@@ -88,6 +98,7 @@ export interface CaseRecord {
   ownerType: "vani" | "coordinator" | "doctor";
   /** Coordinator assigned to the case (for "My cases"); undefined = unassigned */
   coordinatorId?: string;
+  assignedDoctorId?: string;
   takeoverBy?: string;
   reasons: ReasonEntry[];
   appointment?: Appointment;

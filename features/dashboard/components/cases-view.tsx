@@ -20,7 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { cn } from "@/libs/utils";
 import type { CaseRecord, CaseStatus, Patient, Priority, ReasonCode } from "../types";
 import { PRIORITY_META, REASON_CODES, REASON_META, STATUS_LABEL, formatDay, getPatientAvatar } from "../logic/constants";
-import { accountById, dayCount, isOverdue, priorityOf } from "../logic/engine";
+import { accountById, dayCount, doctorById, isOverdue, priorityOf } from "../logic/engine";
 import { useActiveAccount, useDemoStore } from "../hooks/use-demo-store";
 import { CaseStatusBadge, ConversationBadge, FilterSelect, Initials, PageHeader, Panel, PriorityBadge, Segmented } from "./ui-kit";
 
@@ -42,7 +42,7 @@ type Column = {
 function ownerName(c: CaseRecord) {
   if (c.takeoverBy) return accountById(c.takeoverBy)?.name ?? "Staff";
   if (c.ownerType === "vani") return "Vani";
-  if (c.ownerType === "doctor") return "Dr. Yoga";
+  if (c.ownerType === "doctor" || c.escalated) return doctorById(c.assignedDoctorId)?.name ?? "Dr. Yoga";
   return accountById(c.coordinatorId)?.name ?? "Unassigned";
 }
 

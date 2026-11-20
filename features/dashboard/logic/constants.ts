@@ -4,6 +4,7 @@ import type {
   ConsentLevel,
   ConversationStatus,
   DemoAccount,
+  DoctorProfile,
   Priority,
   ReasonCode,
   Role,
@@ -20,6 +21,51 @@ export const ACCOUNTS: DemoAccount[] = [
   { id: "dewi", name: "Nurse Dewi", role: "coordinator", initials: "DW", title: "Care Coordinator", avatar: "/images/avatars/nurse.png" },
   { id: "yoga", name: "Dr. Yoga", role: "doctor", initials: "DY", title: "Doctor", avatar: "/images/avatars/dokter.png" },
   { id: "hadi", name: "Hadi", role: "manager", initials: "HD", title: "Facility Manager", avatar: "/images/avatars/manager.png" },
+];
+
+export const DOCTORS: DoctorProfile[] = [
+  {
+    id: "yoga",
+    name: "Dr. Yoga",
+    specialty: "General Practitioner · Chronic Care",
+    avatar: "/images/avatars/dokter.png",
+    available: true,
+    basePatients: 3,
+  },
+  {
+    id: "maya",
+    name: "dr. Maya, Sp.JP",
+    specialty: "Cardiology · Hypertension Specialist",
+    avatar: "/images/avatars/dokter.png",
+    available: true,
+    basePatients: 1,
+  },
+  {
+    id: "andika",
+    name: "dr. Andika, Sp.PD",
+    specialty: "Internal Medicine",
+    avatar: "/images/avatars/dokter.png",
+    available: true,
+    basePatients: 5,
+  },
+  {
+    id: "hendra",
+    name: "dr. Hendra, Sp.S",
+    specialty: "Neurology · Emergency",
+    avatar: "/images/avatars/dokter.png",
+    available: false,
+    unavailableReason: "In ER procedure",
+    basePatients: 6,
+  },
+  {
+    id: "sinta",
+    name: "dr. Sinta, Sp.PD",
+    specialty: "Internal Medicine",
+    avatar: "/images/avatars/dokter.png",
+    available: false,
+    unavailableReason: "Shift ended",
+    basePatients: 4,
+  },
 ];
 
 export const ROLE_HOME: Record<Role, string> = {

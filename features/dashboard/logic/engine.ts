@@ -11,6 +11,7 @@ import type {
 } from "../types";
 import {
   ACCOUNTS,
+  DOCTORS,
   FACILITY,
   REASON_CODES,
   REASON_META,
@@ -54,6 +55,10 @@ export function accountById(id?: string) {
   return ACCOUNTS.find((a) => a.id === id);
 }
 
+export function doctorById(id?: string) {
+  return DOCTORS.find((d) => d.id === id);
+}
+
 export function canSeePatients(role: Role) {
   return role !== "manager";
 }
@@ -77,7 +82,7 @@ export type Action =
   | { type: "ASSIGN_TO_ME"; caseId: string }
   | { type: "SCHEDULE"; caseId: string; day: number; time: string }
   | { type: "RECORD_VISIT"; caseId: string; inTarget: boolean }
-  | { type: "ESCALATE"; caseId: string; note: string }
+  | { type: "ESCALATE"; caseId: string; note: string; doctorId?: string }
   | { type: "CLINICAL_DECISION"; caseId: string; note: string; returnToCoordinator: boolean }
   | { type: "CLOSE_CASE"; caseId: string; closure: ClosureType; note: string }
   | { type: "REVOKE_FAMILY"; caseId: string }
@@ -503,12 +508,20 @@ export function reducer(state: DemoState, action: Action): DemoState {
       c.appointment = undefined;
       break;
     }
-    case "ESCALATE":
+    case "ESCALATE": {
+      const assignedDoc = doctorById(action.doctorId);
       c.escalated = true;
+      c.assignedDoctorId = action.doctorId ?? c.assignedDoctorId ?? "yoga";
       if (c.conversation !== "urgent") c.conversation = "handed_over";
       c.handoverNote = action.note || "Escalated for clinical review";
-      addEvent(d, { caseId: c.id, kind: "clinical", label: `Escalated to doctor: ${c.handoverNote}`, actor });
+      addEvent(d, {
+        caseId: c.id,
+        kind: "clinical",
+        label: `Escalated to ${assignedDoc ? assignedDoc.name : "doctor"}: ${c.handoverNote}`,
+        actor,
+      });
       break;
+    }
     case "CLINICAL_DECISION":
       addEvent(d, { caseId: c.id, kind: "clinical", label: `Clinical decision: ${action.note}`, actor });
       if (action.returnToCoordinator) {

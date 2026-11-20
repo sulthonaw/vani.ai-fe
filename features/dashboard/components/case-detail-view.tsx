@@ -7,7 +7,9 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Hand,
+  Search,
   ShieldAlert,
+  Sparkles,
   Stethoscope,
   Undo2,
   UserPlus,
@@ -26,11 +28,12 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/libs/utils";
 import type { CaseRecord, ClosureType, DemoState } from "../types";
-import { CLOSURE_LABEL, CONSENT_LABEL, REASON_META, formatDay, getPatientAvatar, nextWeekday } from "../logic/constants";
-import { accountById, canClose, dayCount, familyOf, isOverdue, priorityOf } from "../logic/engine";
+import { CLOSURE_LABEL, CONSENT_LABEL, DOCTORS, REASON_META, formatDay, getPatientAvatar, nextWeekday } from "../logic/constants";
+import { accountById, canClose, dayCount, doctorById, familyOf, isOverdue, priorityOf } from "../logic/engine";
 import { useActiveAccount, useDemoStore } from "../hooks/use-demo-store";
 import { CaseStatusBadge, ConversationBadge, EmptyState, FilterSelect, Initials, Panel, PriorityBadge } from "./ui-kit";
 import { WhatsAppChat } from "./whatsapp-chat";
@@ -79,6 +82,214 @@ function ScheduleForm({ state, c, onDone }: { state: DemoState; c: CaseRecord; o
         Confirm
       </Button>
     </div>
+  );
+}
+
+function EscalateDoctorDialog({
+  c,
+  open,
+  onOpenChange,
+}: {
+  c: CaseRecord;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const { state, dispatch } = useDemoStore();
+  const [search, setSearch] = React.useState("");
+  const [sortBy, setSortBy] = React.useState<"recommendation" | "patients" | "name">("recommendation");
+  const [note, setNote] = React.useState("Needs clinical review");
+
+  const doctorStats = React.useMemo(() => {
+    const activeCasesByDoctor = new Map<string, number>();
+    state.cases.forEach((item) => {
+      if (item.status !== "closed" && (item.escalated || item.ownerType === "doctor")) {
+        const docId = item.assignedDoctorId ?? "yoga";
+        activeCasesByDoctor.set(docId, (activeCasesByDoctor.get(docId) ?? 0) + 1);
+      }
+    });
+
+    const list = DOCTORS.map((doc) => ({
+      ...doc,
+      patientCount: doc.basePatients + (activeCasesByDoctor.get(doc.id) ?? 0),
+    }));
+
+    // Determine the top recommended doctor (available with fewest patients)
+    const availableSorted = [...list].filter((d) => d.available).sort((a, b) => a.patientCount - b.patientCount);
+    const topRecommendedId = availableSorted[0]?.id;
+
+    return list.map((d) => ({
+      ...d,
+      isRecommended: d.id === topRecommendedId,
+    }));
+  }, [state.cases]);
+
+  const filteredDoctors = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const list = doctorStats.filter(
+      (d) => !q || d.name.toLowerCase().includes(q) || d.specialty.toLowerCase().includes(q),
+    );
+    return [...list].sort((a, b) => {
+      if (sortBy === "recommendation") {
+        if (a.available !== b.available) return a.available ? -1 : 1;
+        return a.patientCount - b.patientCount;
+      }
+      if (sortBy === "patients") {
+        return a.patientCount - b.patientCount;
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }, [doctorStats, search, sortBy]);
+
+  const defaultSelected = React.useMemo(
+    () => doctorStats.find((d) => d.isRecommended)?.id ?? doctorStats.find((d) => d.available)?.id ?? "",
+    [doctorStats],
+  );
+  const [selectedDoctorId, setSelectedDoctorId] = React.useState<string>(defaultSelected);
+
+  React.useEffect(() => {
+    if (open) {
+      setSelectedDoctorId(defaultSelected);
+    }
+  }, [open, defaultSelected]);
+
+  const selectedDoc = doctorStats.find((d) => d.id === selectedDoctorId && d.available);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Stethoscope className="size-4 text-brand-700" />
+            Escalate to Doctor
+          </DialogTitle>
+          <DialogDescription className="text-xs">
+            Select an available doctor to assign this case. Recommended doctors are ranked by availability and lowest active caseload.
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Search & Sort Controls */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-steel-300" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search doctor name or specialty…"
+              className="h-8 rounded-lg border-steel-100 pl-8 text-xs shadow-none"
+            />
+          </div>
+          <FilterSelect
+            value={sortBy}
+            onChange={(v) => setSortBy(v as "recommendation" | "patients" | "name")}
+            options={[
+              { value: "recommendation", label: "Sort: Recommendation" },
+              { value: "patients", label: "Sort: Fewest patients" },
+              { value: "name", label: "Sort: Name A–Z" },
+            ]}
+            className="h-8 w-full shrink-0 text-xs sm:w-48"
+          />
+        </div>
+
+        {/* Doctor List */}
+        <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+          {filteredDoctors.length === 0 && (
+            <p className="rounded-lg border border-dashed border-steel-100 py-6 text-center text-xs text-steel-500">
+              No doctors match &ldquo;{search}&rdquo;.
+            </p>
+          )}
+          {filteredDoctors.map((doc) => {
+            const isSelected = selectedDoctorId === doc.id && doc.available;
+            return (
+              <label
+                key={doc.id}
+                className={cn(
+                  "flex items-start gap-3 rounded-xl border p-3 transition",
+                  !doc.available
+                    ? "cursor-not-allowed border-steel-100 bg-slate-50/80 opacity-60"
+                    : isSelected
+                      ? "cursor-pointer border-brand-500 bg-tint/60 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
+                      : "cursor-pointer border-steel-100 bg-white hover:bg-surface",
+                )}
+              >
+                <Checkbox
+                  checked={isSelected}
+                  disabled={!doc.available}
+                  onCheckedChange={() => {
+                    if (doc.available) setSelectedDoctorId(doc.id);
+                  }}
+                  className="mt-1 shrink-0 rounded-full"
+                />
+                <Initials name={doc.name} avatarUrl={doc.avatar} className="size-9 shrink-0 text-xs" />
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span className="line-clamp-1 text-[13px] font-semibold text-navy-950">{doc.name}</span>
+                      {doc.isRecommended && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#EEF4FF] px-2 py-0.5 text-[10px] font-semibold text-brand-700">
+                          <Sparkles className="size-2.5" /> Recommended
+                        </span>
+                      )}
+                    </div>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        doc.available ? "bg-[#E3F5EC] text-[#1B7F55]" : "bg-[#FDECEC] text-[#C9373C]",
+                      )}
+                    >
+                      {doc.available ? "Available" : "Unavailable"}
+                    </span>
+                  </div>
+                  <p className="line-clamp-1 text-[11.5px] text-steel-500">{doc.specialty}</p>
+                  <div className="flex min-w-0 items-center gap-1.5 pt-0.5 text-[11px]">
+                    <span className="shrink-0 font-medium text-navy-800">
+                      {doc.patientCount} active {doc.patientCount === 1 ? "patient" : "patients"}
+                    </span>
+                    {!doc.available && doc.unavailableReason && (
+                      <span className="line-clamp-1 text-[#C9373C]">· {doc.unavailableReason}</span>
+                    )}
+                  </div>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+
+        {/* Escalation Note */}
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-steel-500">Note for doctor</label>
+          <Textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Brief clinical handover note…"
+            className="min-h-16 resize-none border-steel-100 text-xs"
+          />
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="h-8 text-xs">
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            disabled={!selectedDoc}
+            onClick={() => {
+              if (!selectedDoc) return;
+              dispatch({
+                type: "ESCALATE",
+                caseId: c.id,
+                doctorId: selectedDoc.id,
+                note: note.trim() || "Needs clinical review",
+              });
+              toast.success(`Escalated to ${selectedDoc.name}`);
+              onOpenChange(false);
+            }}
+            className="h-8 bg-brand-700 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-40"
+          >
+            Escalate & Assign{selectedDoc ? ` (${selectedDoc.name})` : ""}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -187,6 +398,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const c = state.cases.find((x) => x.id === caseId);
   const [showSchedule, setShowSchedule] = React.useState(false);
   const [closeOpen, setCloseOpen] = React.useState(false);
+  const [escalateOpen, setEscalateOpen] = React.useState(false);
   const [clinicalNote, setClinicalNote] = React.useState("");
 
   const timeline = React.useMemo(() => (c ? state.timeline.filter((t) => t.caseId === c.id) : []), [state.timeline, c]);
@@ -248,8 +460,8 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                       ? `${accountById(c.takeoverBy)?.name} (took over)`
                       : c.ownerType === "vani"
                         ? "Vani"
-                        : c.ownerType === "doctor"
-                          ? "Doctor (Dr. Yoga)"
+                        : c.ownerType === "doctor" || c.escalated
+                          ? `Doctor (${doctorById(c.assignedDoctorId)?.name ?? "Dr. Yoga"})`
                           : (accountById(c.coordinatorId)?.name ?? "Unassigned")}
                   </b>{" "}
                   · Coordinator: {accountById(c.coordinatorId)?.name ?? "Unassigned"} · Registered at {patient.registeredClinic} · Insurance {patient.insuranceStatus}
@@ -313,10 +525,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                     <ActionButton
                       icon={<Stethoscope />}
                       tone="danger"
-                      onClick={() => {
-                        dispatch({ type: "ESCALATE", caseId: c.id, note: "Needs clinical review" });
-                        toast("Escalated to doctor");
-                      }}
+                      onClick={() => setEscalateOpen(true)}
                     >
                       Escalate to doctor
                     </ActionButton>
@@ -434,6 +643,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         </div>
       </div>
 
+      <EscalateDoctorDialog c={c} open={escalateOpen} onOpenChange={setEscalateOpen} />
       <CloseDialog c={c} open={closeOpen} onOpenChange={setCloseOpen} />
     </div>
   );

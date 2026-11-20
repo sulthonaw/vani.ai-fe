@@ -189,20 +189,23 @@ function MainViewport({ children }: { children: React.ReactNode }) {
   const isCaseDetail = pathname.startsWith("/dashboard/cases/");
 
   return (
-    <main
-      className={cn(
-        "flex-1",
-        isFlushQueue
-          ? "h-[calc(100vh-3.5rem)] overflow-hidden p-0"
-          : isCaseDetail
-            ? "px-4 py-4 md:px-8 md:py-5"
-            : "px-4 py-6 md:px-8 md:py-8",
-      )}
-    >
-      <div className={cn("w-full", isFlushQueue ? "h-full" : "mx-auto max-w-[1400px]")}>
-        <RoleGuard>{children}</RoleGuard>
-      </div>
-    </main>
+    <div className={cn("flex min-w-0 flex-1 flex-col", isFlushQueue && "h-screen overflow-hidden")}>
+      <TopBar />
+      <main
+        className={cn(
+          "flex-1",
+          isFlushQueue
+            ? "min-h-0 overflow-hidden p-0"
+            : isCaseDetail
+              ? "px-4 py-4 md:px-8 md:py-5"
+              : "px-4 py-6 md:px-8 md:py-8",
+        )}
+      >
+        <div className={cn("w-full", isFlushQueue ? "h-full min-h-0" : "mx-auto max-w-[1400px]")}>
+          <RoleGuard>{children}</RoleGuard>
+        </div>
+      </main>
+    </div>
   );
 }
 
@@ -213,12 +216,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <React.Suspense fallback={<div className="hidden w-60 shrink-0 border-r border-[#E8EBF1] bg-white md:block" />}>
           <Sidebar />
         </React.Suspense>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <TopBar />
-          <React.Suspense fallback={null}>
-            <MainViewport>{children}</MainViewport>
-          </React.Suspense>
-        </div>
+        <React.Suspense fallback={null}>
+          <MainViewport>{children}</MainViewport>
+        </React.Suspense>
         <Toaster position="top-center" theme="light" />
       </div>
     </DemoStoreProvider>
