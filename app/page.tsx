@@ -8,6 +8,7 @@ import {
   HowSection,
   LandingFooter,
   LandingNavbar,
+  LandingSmoothScroll,
   PilotSection,
   SafetySection,
   TeamSection,
@@ -16,6 +17,7 @@ import {
 export default function HomePage() {
   return (
     <main lang="en" className="min-h-screen w-full bg-white text-[#061224]">
+      <LandingSmoothScroll />
       <LandingNavbar />
       <HeroSection />
       <GapSection />
