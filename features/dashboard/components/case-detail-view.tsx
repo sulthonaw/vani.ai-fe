@@ -3,13 +3,10 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  Bot,
   CalendarPlus,
   CheckCircle2,
   ClipboardCheck,
   Hand,
-  MessagesSquare,
-  Send,
   ShieldAlert,
   Stethoscope,
   Undo2,
@@ -27,12 +24,16 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/libs/utils";
-import type { CaseRecord, ClosureType, DemoState, Message } from "../types";
+import type { CaseRecord, ClosureType, DemoState } from "../types";
 import { CLOSURE_LABEL, CONSENT_LABEL, REASON_META, formatDay, nextWeekday } from "../logic/constants";
 import { accountById, canClose, dayCount, familyOf, isOverdue, priorityOf } from "../logic/engine";
 import { useActiveAccount, useDemoStore } from "../hooks/use-demo-store";
-import { CaseStatusBadge, ConversationBadge, EmptyState, Initials, Panel, PriorityBadge } from "./ui-kit";
+import { CaseStatusBadge, ConversationBadge, EmptyState, FilterSelect, Initials, Panel, PriorityBadge } from "./ui-kit";
+import { WhatsAppChat } from "./whatsapp-chat";
 
 const KIND_DOT: Record<string, string> = {
   result: "#294167",
@@ -47,33 +48,6 @@ const KIND_DOT: Record<string, string> = {
   system: "#97A0B7",
 };
 
-function MessageBubble({ m }: { m: Message }) {
-  const outgoing = m.from === "vani" || m.from === "staff";
-  const label =
-    m.from === "vani" ? "Vani (digital assistant)" : m.from === "staff" ? m.senderName : m.from === "family" ? `${m.senderName} · family` : m.senderName;
-  return (
-    <div className={cn("flex flex-col gap-1", outgoing ? "items-end" : "items-start")}>
-      <span className="flex items-center gap-1 px-1 text-[10px] font-medium text-steel-300">
-        {m.from === "vani" && <Bot className="size-3" />}
-        {label}
-        {m.to === "family" && m.from !== "family" && " → family"} · Day {m.day} {m.time}
-      </span>
-      <div
-        className={cn(
-          "max-w-[85%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed",
-          m.from === "vani" && "bg-tint text-navy-900",
-          m.from === "staff" && "bg-brand-700 text-white",
-          m.from === "patient" && "border border-steel-100 bg-white text-navy-900",
-          m.from === "family" && "border border-[#D6E2F8] bg-[#F5F8FE] text-navy-900",
-          outgoing ? "rounded-br-md" : "rounded-bl-md",
-        )}
-      >
-        {m.text}
-      </div>
-    </div>
-  );
-}
-
 function ScheduleForm({ state, c, onDone }: { state: DemoState; c: CaseRecord; onDone: () => void }) {
   const { dispatch } = useDemoStore();
   const options = [
@@ -81,38 +55,29 @@ function ScheduleForm({ state, c, onDone }: { state: DemoState; c: CaseRecord; o
     { label: `Saturday (${formatDay(nextWeekday(state.day, 6))})`, day: nextWeekday(state.day, 6) },
     { label: `Next Monday (${formatDay(nextWeekday(state.day, 1))})`, day: nextWeekday(state.day, 1) },
   ];
-  const [day, setDay] = React.useState(options[1].day);
+  const [day, setDay] = React.useState(String(options[1].day));
   const [time, setTime] = React.useState("08:00");
   return (
     <div className="flex flex-wrap items-end gap-2 rounded-xl border border-steel-100 bg-surface p-3">
-      <label className="flex flex-col gap-1 text-[11px] font-medium text-steel-500">
+      <div className="flex flex-col gap-1 text-[11px] font-medium text-steel-500">
         Day
-        <select value={day} onChange={(e) => setDay(Number(e.target.value))} className="h-8 rounded-lg border border-steel-100 bg-white px-2 text-xs text-navy-900">
-          {options.map((o) => (
-            <option key={o.day} value={o.day}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="flex flex-col gap-1 text-[11px] font-medium text-steel-500">
+        <FilterSelect value={day} onChange={setDay} options={options.map((o) => ({ value: String(o.day), label: o.label }))} className="w-60" />
+      </div>
+      <div className="flex flex-col gap-1 text-[11px] font-medium text-steel-500">
         Time
-        <select value={time} onChange={(e) => setTime(e.target.value)} className="h-8 rounded-lg border border-steel-100 bg-white px-2 text-xs text-navy-900">
-          {["07:30", "08:00", "09:00", "10:30", "13:00"].map((t) => (
-            <option key={t}>{t}</option>
-          ))}
-        </select>
-      </label>
-      <button
+        <FilterSelect value={time} onChange={setTime} options={["07:30", "08:00", "09:00", "10:30", "13:00"].map((t) => ({ value: t, label: t }))} className="w-24" />
+      </div>
+      <Button
+        size="sm"
         onClick={() => {
-          dispatch({ type: "SCHEDULE", caseId: c.id, day, time });
-          toast.success("Visit scheduled", { description: `${formatDay(day)} at ${time}. Vani will send reminders.` });
+          dispatch({ type: "SCHEDULE", caseId: c.id, day: Number(day), time });
+          toast.success("Visit scheduled", { description: `${formatDay(Number(day))} at ${time}. Vani will send reminders.` });
           onDone();
         }}
-        className="h-8 rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white hover:bg-brand-600"
+        className="h-8 rounded-lg px-3 text-xs font-semibold"
       >
         Confirm
-      </button>
+      </Button>
     </div>
   );
 }
@@ -133,15 +98,15 @@ function CloseDialog({ c, open, onOpenChange }: { c: CaseRecord; open: boolean; 
         <div className="space-y-2">
           {(Object.keys(CLOSURE_LABEL) as ClosureType[]).map((t) => (
             <label key={t} className={cn("flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm", type === t ? "border-brand-500 bg-tint" : "border-steel-100")}>
-              <input type="radio" checked={type === t} onChange={() => setType(t)} className="accent-[#294167]" />
+              <Checkbox checked={type === t} onCheckedChange={() => setType(t)} className="rounded-full" />
               {CLOSURE_LABEL[t]}
             </label>
           ))}
-          <textarea
+          <Textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Evidence / note (e.g. two in-target readings on day 20 and 34)"
-            className="h-20 w-full resize-none rounded-lg border border-steel-100 p-2 text-sm outline-none focus:border-brand-500"
+            className="min-h-20 resize-none border-steel-100 text-sm"
           />
           <p className="text-xs text-steel-500">
             In-target visits recorded: <b>{c.visitsInTarget}</b> / 2
@@ -222,16 +187,9 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const c = state.cases.find((x) => x.id === caseId);
   const [showSchedule, setShowSchedule] = React.useState(false);
   const [closeOpen, setCloseOpen] = React.useState(false);
-  const [draft, setDraft] = React.useState("");
   const [clinicalNote, setClinicalNote] = React.useState("");
-  const chatEnd = React.useRef<HTMLDivElement>(null);
 
-  const messages = React.useMemo(() => (c ? state.messages.filter((m) => m.caseId === c.id) : []), [state.messages, c]);
   const timeline = React.useMemo(() => (c ? state.timeline.filter((t) => t.caseId === c.id) : []), [state.timeline, c]);
-
-  React.useEffect(() => {
-    chatEnd.current?.scrollIntoView({ block: "nearest" });
-  }, [messages.length]);
 
   React.useEffect(() => {
     if (c?.unread) dispatch({ type: "MARK_READ", caseId: c.id });
@@ -239,7 +197,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
 
   if (!c) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         <CaseBreadcrumb />
         <EmptyState>
           This case does not exist in the demo data. <Link href="/dashboard/cases" className="font-semibold text-brand-700">Back to cases</Link>
@@ -252,16 +210,15 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const fam = familyOf(state, c.patientId);
   const famAny = state.families.find((f) => f.patientId === c.patientId);
   const takenByMe = c.takeoverBy === account.id;
-  const takenByOther = !!c.takeoverBy && !takenByMe;
   const closed = c.status === "closed";
   const prio = priorityOf(c, state.day);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <CaseBreadcrumb name={patient.name} />
 
       {/* Header */}
-      <section className="rounded-2xl border border-steel-100 bg-white">
+      <section className="rounded-xl border border-[#E8EBF1] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         <div className="flex flex-wrap items-start gap-4 px-5 py-4">
           <Initials name={patient.name} className="size-12 text-sm" />
           <div className="min-w-0 flex-1">
@@ -370,7 +327,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
       </section>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <div className="space-y-4">
+        <div className="space-y-6">
           <Panel icon={<History />} title="Case timeline" subtitle="Every step, with who did it and when">
             <ol className="relative space-y-3 border-l border-steel-100 pl-4">
               {timeline.map((t) => (
@@ -434,11 +391,11 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
 
           {account.role === "doctor" && !closed && (
             <Panel icon={<Stethoscope />} title="Clinical decision" subtitle="Only doctors make medical decisions">
-              <textarea
+              <Textarea
                 value={clinicalNote}
                 onChange={(e) => setClinicalNote(e.target.value)}
                 placeholder="e.g. Called patient; referred to ED. Recheck BP in 3 days."
-                className="h-20 w-full resize-none rounded-lg border border-steel-100 p-2 text-xs outline-none focus:border-brand-500"
+                className="min-h-20 resize-none border-steel-100 text-xs"
               />
               <div className="mt-2 flex gap-2">
                 <ActionButton
@@ -468,46 +425,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           )}
         </div>
 
-        <Panel icon={<MessagesSquare />} title="Conversation" subtitle="WhatsApp (simulated) · Vani, staff, patient and family" bodyClassName="flex flex-col p-0">
-          <div className="max-h-[640px] min-h-[360px] flex-1 space-y-3 overflow-y-auto bg-surface/60 px-5 py-4">
-            {messages.length === 0 && <p className="pt-10 text-center text-xs text-steel-300">No messages yet.</p>}
-            {messages.map((m) => (
-              <MessageBubble key={m.id} m={m} />
-            ))}
-            <div ref={chatEnd} />
-          </div>
-          <div className="border-t border-steel-100 p-3">
-            {closed ? (
-              <p className="text-center text-xs text-steel-300">Case closed</p>
-            ) : takenByMe ? (
-              <form
-                className="flex gap-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (!draft.trim()) return;
-                  dispatch({ type: "STAFF_MESSAGE", caseId: c.id, text: draft.trim() });
-                  setDraft("");
-                }}
-              >
-                <input
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder={`Message as ${account.name}…`}
-                  className="h-9 flex-1 rounded-lg border border-steel-100 px-3 text-sm outline-none focus:border-brand-500"
-                />
-                <button className="grid size-9 place-items-center rounded-lg bg-brand-700 text-white hover:bg-brand-600" aria-label="Send">
-                  <Send className="size-4" />
-                </button>
-              </form>
-            ) : takenByOther ? (
-              <p className="text-center text-xs text-steel-500">{accountById(c.takeoverBy)?.name} is handling this conversation.</p>
-            ) : (
-              <p className="flex items-center justify-center gap-1.5 text-center text-xs text-steel-500">
-                <Bot className="size-3.5" /> Vani is handling this conversation. Take over to reply yourself.
-              </p>
-            )}
-          </div>
-        </Panel>
+        <WhatsAppChat c={c} patientName={patient.name} />
       </div>
 
       <CloseDialog c={c} open={closeOpen} onOpenChange={setCloseOpen} />

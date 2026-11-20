@@ -77,7 +77,7 @@ export function SidebarAccountSwitcher({ collapsed }: { collapsed?: boolean }) {
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(
-          "flex w-full items-center gap-2.5 rounded-xl border border-steel-100 bg-white p-2 text-left transition hover:border-steel-200 hover:bg-surface",
+          "flex w-full items-center gap-2.5 rounded-lg p-2 text-left transition hover:bg-[#F4F5F8]",
           collapsed && "justify-center border-transparent p-1",
         )}
         aria-label="Switch account"

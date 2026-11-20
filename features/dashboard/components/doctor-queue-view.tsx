@@ -14,10 +14,10 @@ export function DoctorQueueView() {
     .sort((a, b) => (a.conversation === "urgent" ? 0 : 1) - (b.conversation === "urgent" ? 0 : 1));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-navy-950">Doctor Queue</h1>
-        <p className="text-sm text-steel-500">Only cases that need a clinical decision. Urgent cases always come first.</p>
+        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-navy-950">Doctor Queue</h1>
+        <p className="mt-0.5 text-[13px] text-steel-500">Only cases that need a clinical decision. Urgent cases always come first.</p>
       </div>
       <Panel icon={<Stethoscope />} title={`${queue.length} cases for review`} subtitle="Danger signs (rule-based), medication concerns and escalations" bodyClassName="space-y-3">
         {queue.length === 0 && <EmptyState>No cases need a doctor right now.</EmptyState>}
@@ -30,7 +30,7 @@ export function DoctorQueueView() {
             <button
               key={c.id}
               onClick={() => router.push(`/dashboard/cases/${c.id}`)}
-              className="flex w-full items-start gap-4 rounded-xl border border-steel-100 p-4 text-left transition hover:border-steel-200 hover:bg-tint/40"
+              className="flex w-full items-start gap-4 rounded-lg border border-[#EEF0F4] p-4 text-left transition hover:bg-[#FAFBFC]"
             >
               <Initials name={p.name} tone="soft" className="size-10 text-xs" />
               <div className="min-w-0 flex-1">

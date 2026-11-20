@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import { CaseDetailView } from "@/features/dashboard";
 
-// Demo case ids from the synthetic seed (c1 … c34) are prerendered.
+// Demo case ids from the synthetic seed (c1 … c10) are prerendered.
 export function generateStaticParams() {
-  return Array.from({ length: 34 }, (_, i) => ({ caseId: `c${i + 1}` }));
+  return Array.from({ length: 10 }, (_, i) => ({ caseId: `c${i + 1}` }));
 }
 
 async function CaseDetail({ params }: { params: Promise<{ caseId: string }> }) {
@@ -18,3 +18,6 @@ export default function Page({ params }: { params: Promise<{ caseId: string }> }
     </Suspense>
   );
 }
+
+// The dashboard renders on the client (demo state lives in localStorage), so opt out of instant-navigation validation.
+export const instant = false;

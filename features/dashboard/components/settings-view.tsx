@@ -26,14 +26,14 @@ const CONTENT = [
 
 export function SettingsView() {
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-navy-950">Settings</h1>
+        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-navy-950">Settings</h1>
         <p className="flex items-center gap-1.5 text-sm text-steel-500">
           <Lock className="size-3.5" /> Read-only in this prototype. Values are demo defaults and must be set by the clinical team.
         </p>
       </div>
-      <div className="grid gap-5 xl:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-2">
         <Panel icon={<Scale />} title="Rules (deterministic)" subtitle="Decisions are made by rules, not by AI" className="xl:row-span-2">
           <dl className="divide-y divide-steel-100 text-[13px]">
             {RULE_ROWS.map(([k, v]) => (

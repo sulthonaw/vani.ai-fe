@@ -14,7 +14,7 @@ import { FACILITY, REASON_META } from "../logic/constants";
 
 /** Demo "today": day 17 = Thu 20 Nov 2026 */
 export const START_DAY = 17;
-export const STATE_VERSION = 4;
+export const STATE_VERSION = 5;
 
 type Spec = {
   name: string;
@@ -41,7 +41,7 @@ type Spec = {
   otherClinic?: boolean;
 };
 
-const SPECS: Spec[] = [
+const ALL_SPECS: Spec[] = [
   { name: "Andi Pratama", age: 38, sex: "M", area: "North", bp: [160, 100], daysAgo: 10, status: "contacted", conv: "active", coord: "rina", otherClinic: true, family: { name: "Sari", relation: "Wife", level: "schedule" } },
   { name: "Lastri Wahyuni", age: 57, sex: "F", area: "East", bp: [186, 112], daysAgo: 3, status: "contacted", conv: "urgent", coord: "rina", owner: "doctor", urgentText: "My head hurts badly since this morning and I have blurred vision." },
   { name: "Siti Rahma", age: 49, sex: "F", area: "South", bp: [150, 95], daysAgo: 9, status: "contacted", conv: "awaiting", coord: "rina", awaitingDays: 2 },
@@ -77,6 +77,10 @@ const SPECS: Spec[] = [
   { name: "Gilang Ramadhan", age: 46, sex: "M", area: "West", bp: [150, 97], daysAgo: 24, status: "closed", conv: "idle", coord: "dewi", closure: "declined", reason: "FEAR_MEDS" },
   { name: "Sinta Maharani", age: 34, sex: "F", area: "North", bp: [143, 91], daysAgo: 5, status: "contacted", conv: "active", coord: "rina" },
 ];
+
+/** The demo uses 10 patients that together cover every status and conversation state. */
+const DEMO_PATIENTS = ["Andi", "Lastri", "Siti", "Budi", "Wati", "Maya", "Hendra", "Putri", "Agus", "Nur"];
+const SPECS = DEMO_PATIENTS.map((n) => ALL_SPECS.find((s) => s.name.startsWith(`${n} `))!);
 
 const COORD_NAME = { rina: "Nurse Rina", dewi: "Nurse Dewi" };
 

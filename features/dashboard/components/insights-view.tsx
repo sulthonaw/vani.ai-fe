@@ -10,7 +10,7 @@ import { Panel, SyntheticTag } from "./ui-kit";
 
 function Metric({ label, value, hint, good }: { label: string; value: string | number; hint?: string; good?: boolean }) {
   return (
-    <div className="rounded-xl border border-steel-100 p-4">
+    <div className="rounded-lg bg-[#F7F8FA] p-4">
       <p className="text-xs text-steel-500">{label}</p>
       <p className={`mt-1 text-2xl font-semibold tabular-nums ${good ? "text-status-active" : "text-navy-950"}`}>{value}</p>
       {hint && <p className="mt-0.5 text-[11px] text-steel-300">{hint}</p>}
@@ -28,16 +28,16 @@ export function InsightsView() {
   const max = f[0].count || 1;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-navy-950">Insights</h1>
-          <p className="text-sm text-steel-500">Where patients drop off, why, and how fast the team closes the loop. No patient names or messages.</p>
+          <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-navy-950">Insights</h1>
+          <p className="mt-0.5 text-[13px] text-steel-500">Where patients drop off, why, and how fast the team closes the loop. No patient names or messages.</p>
         </div>
         <SyntheticTag />
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-2">
         <Panel icon={<Filter />} title="Case funnel" subtitle="How far each abnormal result has progressed">
           <ul className="space-y-3">
             {f.map((s, i) => (
@@ -99,7 +99,7 @@ export function InsightsView() {
         </div>
       </Panel>
 
-      <div className="grid gap-5 xl:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-2">
         <Panel icon={<Users />} title="Family channel" subtitle="Only with patient consent">
           <div className="grid grid-cols-3 gap-3">
             <Metric label="Patients who consented" value={`${fam.consentPct}%`} hint={`${fam.consentCount} patients`} />
