@@ -129,19 +129,24 @@ export function FilterSelect<T extends string>({
   value,
   onChange,
   options,
+  label,
   className,
 }: {
   value: T;
   onChange: (v: T) => void;
   options: { value: T; label: string }[];
+  /** Short name shown inside the trigger so it is clear what the select controls. */
+  label?: string;
   className?: string;
 }) {
   return (
     <Select items={options} value={value} onValueChange={(v) => v !== null && onChange(v as T)}>
       <SelectTrigger
         size="sm"
+        aria-label={label}
         className={cn("h-8 gap-2 rounded-lg border-[#E8EBF1] bg-white pr-2.5 pl-3 text-xs font-medium text-navy-800 hover:bg-[#F7F8FA]", className)}
       >
+        {label && <span className="font-normal text-steel-300">{label}</span>}
         <SelectValue />
       </SelectTrigger>
       <SelectContent alignItemWithTrigger={false} align="start" sideOffset={6} className="min-w-44 p-1">

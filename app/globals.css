@@ -192,3 +192,16 @@
 .vani-pulse {
   animation: vani-pulse 1.4s ease-in-out infinite;
 }
+
+/* Vani Map: smooth hover dimming without changing layout (no resize, no movement) */
+.vani-map .react-flow__node,
+.vani-map .react-flow__edge {
+  transition: opacity 0.15s ease;
+}
+.vani-map .vani-patient-card {
+  transition: box-shadow 0.15s ease;
+}
+/* Lines are visual only: cards are the single hover/click target */
+.vani-map .react-flow__edge {
+  pointer-events: none;
+}

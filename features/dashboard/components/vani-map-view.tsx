@@ -25,20 +25,20 @@ import { useActiveAccount, useDemoStore } from "../hooks/use-demo-store";
 import { Panel } from "./ui-kit";
 
 type VaniData = { count: number };
-type GroupData = { status: ConversationStatus; count: number; dimmed: boolean };
-type PatientData = { name: string; finding: string; status: ConversationStatus; owner: string; unread: boolean; dimmed: boolean; focused: boolean };
-type FamilyData = { name: string; relation: string; contacted: boolean; dimmed: boolean };
+type GroupData = { status: ConversationStatus; count: number };
+type PatientData = { name: string; finding: string; status: ConversationStatus; owner: string; unread: boolean };
+type FamilyData = { name: string; relation: string; contacted: boolean };
 
 const hidden = "!size-1 !min-h-0 !min-w-0 !border-0 !bg-transparent";
 
 /** Layout columns: the orchestrator (Vani) sits on the left and the tree grows to the right. */
-const COL = { vani: 0, group: 300, patient: 640 };
-const ROW = 80;
-const GROUP_GAP = 44;
-/** Patients per column inside a branch; larger branches wrap into extra columns further right. */
-const MAX_ROWS = 4;
-const COL_STEP = 480;
-const FAMILY_OFFSET = 236;
+const COL = { vani: 0, group: 300, patient: 620 };
+/** Vertical distance between patient cards (card is ~50px high, so ~22px clear space). */
+const ROW = 72;
+/** Extra space between status branches. */
+const GROUP_GAP = 36;
+/** Family pill sits to the right of the patient card, with a clear gap. */
+const FAMILY_OFFSET = 250;
 
 const GROUP_HINT: Record<ConversationStatus, string> = {
   urgent: "Doctor now",
@@ -62,7 +62,7 @@ function VaniNode({ data }: NodeProps<Node<VaniData>>) {
 function GroupNode({ data }: NodeProps<Node<GroupData>>) {
   const meta = CONVERSATION_META[data.status];
   return (
-    <div className={cn("w-[200px] rounded-xl border bg-white px-3 py-2.5 shadow-sm transition-opacity", data.dimmed && "opacity-35")} style={{ borderColor: meta.color }}>
+    <div className="w-[200px] rounded-xl border bg-white px-3 py-2.5 shadow-sm" style={{ borderColor: meta.color }}>
       <Handle type="target" position={Position.Left} className={hidden} />
       <Handle type="source" position={Position.Right} className={hidden} />
       <div className="flex items-center gap-2">
@@ -81,13 +81,8 @@ function PatientNode({ data }: NodeProps<Node<PatientData>>) {
   const meta = CONVERSATION_META[data.status];
   return (
     <div
-      className={cn(
-        "group w-[210px] cursor-pointer rounded-xl border bg-white px-3 py-2 shadow-sm transition-all duration-150",
-        data.focused && "-translate-y-0.5 shadow-[0_10px_24px_rgba(8,24,50,0.16)]",
-        data.dimmed && "opacity-35",
-        data.unread && !data.dimmed && "vani-pulse",
-      )}
-      style={{ borderColor: meta.color, borderWidth: data.focused ? 2 : 1 }}
+      className="vani-patient-card group relative w-[210px] cursor-pointer rounded-xl border bg-white px-3 py-2 shadow-sm"
+      style={{ borderColor: meta.color, ["--ring" as string]: meta.color }}
     >
       <Handle type="target" position={Position.Left} className={hidden} />
       <Handle type="source" position={Position.Right} className={hidden} />
@@ -106,7 +101,8 @@ function PatientNode({ data }: NodeProps<Node<PatientData>>) {
             {(data.status === "handed_over" || data.status === "urgent") && data.owner ? ` · → ${data.owner}` : ""}
           </p>
         </div>
-        <ArrowUpRight className="size-3.5 shrink-0 text-steel-300 opacity-0 transition group-hover:opacity-100" />
+        {data.unread && <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-brand-500 ring-2 ring-white" title="Unread reply" />}
+        <ArrowUpRight className="size-3.5 shrink-0 text-steel-300 opacity-0 transition-opacity group-hover:opacity-100" />
       </div>
     </div>
   );
@@ -116,9 +112,8 @@ function FamilyNode({ data }: NodeProps<Node<FamilyData>>) {
   return (
     <div
       className={cn(
-        "flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold shadow-sm transition-opacity",
+        "flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold shadow-sm",
         data.contacted ? "border-[#7FA3E8] bg-[#EEF3FD] text-brand-700" : "border-[#D6E2F8] bg-white text-steel-500",
-        data.dimmed && "opacity-35",
       )}
     >
       <Handle type="target" position={Position.Left} className={hidden} />
@@ -139,7 +134,15 @@ export function VaniMapView() {
   const account = useActiveAccount();
   const [filter, setFilter] = React.useState<Filter>({ needsHuman: false, mine: false, family: true });
   /** Case id under the pointer: its whole branch is highlighted and the rest is dimmed. */
-  const [focus, setFocus] = React.useState<string | null>(null);
+  const [focus, setFocusState] = React.useState<string | null>(null);
+  const leaveTimer = React.useRef<number | undefined>(undefined);
+  // Small delay on leave so moving between a card and its line does not flicker.
+  const setFocus = React.useCallback((id: string | null) => {
+    window.clearTimeout(leaveTimer.current);
+    if (id) setFocusState(id);
+    else leaveTimer.current = window.setTimeout(() => setFocusState(null), 80);
+  }, []);
+  React.useEffect(() => () => window.clearTimeout(leaveTimer.current), []);
   // React Flow measures the DOM, so render it on the client only (avoids hydration mismatch).
   const mounted = React.useSyncExternalStore(
     () => () => {},
@@ -160,18 +163,13 @@ export function VaniMapView() {
     const nodes: Node[] = [];
     const edges: Edge[] = [];
     const groups = ORDER.map((s) => ({ status: s, cases: active.filter((c) => c.conversation === s) })).filter((g) => g.cases.length);
-    const focusStatus = focusCase?.conversation;
 
     let y = 0;
     const placed: { status: ConversationStatus; top: number; bottom: number; cases: { c: CaseRecord; x: number; y: number }[] }[] = [];
     groups.forEach((g) => {
       const top = y;
-      const rowsUsed = Math.min(g.cases.length, MAX_ROWS);
-      const rows = g.cases.map((c, i) => ({
-        c,
-        x: COL.patient + Math.floor(i / MAX_ROWS) * COL_STEP,
-        y: top + (i % MAX_ROWS) * ROW,
-      }));
+      const rowsUsed = g.cases.length;
+      const rows = g.cases.map((c, i) => ({ c, x: COL.patient, y: top + i * ROW }));
       y = top + rowsUsed * ROW + GROUP_GAP;
       placed.push({ status: g.status, top, bottom: top + (rowsUsed - 1) * ROW, cases: rows });
     });
@@ -182,50 +180,47 @@ export function VaniMapView() {
     placed.forEach((g) => {
       const meta = CONVERSATION_META[g.status];
       const gid = `g-${g.status}`;
-      const groupDimmed = !!focusStatus && focusStatus !== g.status;
       nodes.push({
         id: gid,
         type: "branch",
         position: { x: COL.group, y: (g.top + g.bottom) / 2 },
-        data: { status: g.status, count: g.cases.length, dimmed: groupDimmed },
+        data: { status: g.status, count: g.cases.length },
         draggable: false,
         selectable: false,
       });
       edges.push({
         id: `e-${gid}`,
+        focusable: false,
         source: "vani",
         target: gid,
         type: "smoothstep",
         pathOptions: { borderRadius: 18 },
-        style: { stroke: meta.color, strokeWidth: focusStatus === g.status ? 3.5 : 2.5, opacity: groupDimmed ? 0.2 : 1 },
+        style: { stroke: meta.color, strokeWidth: 2.5 },
         markerEnd: { type: MarkerType.ArrowClosed, color: meta.color, width: 16, height: 16 },
       } as Edge);
 
       g.cases.forEach(({ c, x: px, y: py }) => {
         const p = state.patients.find((x) => x.id === c.patientId)!;
         const owner = c.takeoverBy ? accountById(c.takeoverBy)?.name : c.ownerType === "doctor" ? "Dr. Yoga" : accountById(c.coordinatorId)?.name;
-        const dimmed = !!focus && focus !== c.id;
-        const focused = focus === c.id;
         nodes.push({
           id: c.id,
           type: "patient",
           position: { x: px, y: py },
-          data: { name: p.name, finding: `BP ${c.systolic}/${c.diastolic}`, status: c.conversation, owner: owner ?? "unassigned", unread: c.unread, dimmed, focused },
+          data: { name: p.name, finding: `BP ${c.systolic}/${c.diastolic}`, status: c.conversation, owner: owner ?? "unassigned", unread: c.unread },
           selectable: false,
         });
         edges.push({
           id: `e-${c.id}`,
+          focusable: false,
           source: gid,
           target: c.id,
           type: "smoothstep",
           pathOptions: { borderRadius: 14 },
-          interactionWidth: 24,
-          className: c.conversation === "active" && !dimmed ? "vani-edge-flow" : undefined,
+          className: c.conversation === "active" ? "vani-edge-flow" : undefined,
           style: {
             stroke: meta.color,
-            strokeWidth: focused ? 3.5 : 1.75,
+            strokeWidth: 1.75,
             strokeDasharray: c.conversation === "no_response" ? "4 6" : undefined,
-            opacity: dimmed ? 0.15 : 1,
           },
           markerEnd: { type: MarkerType.ArrowClosed, color: meta.color, width: 14, height: 14 },
         } as Edge);
@@ -236,24 +231,40 @@ export function VaniMapView() {
             id: `fam-${c.id}`,
             type: "family",
             position: { x: px + FAMILY_OFFSET, y: py + 8 },
-            data: { name: fam.name, relation: fam.relation, contacted: c.familyContacted, dimmed },
+            data: { name: fam.name, relation: fam.relation, contacted: c.familyContacted },
             draggable: false,
             selectable: false,
           });
           edges.push({
             id: `ef-${c.id}`,
+            focusable: false,
             source: c.id,
             target: `fam-${c.id}`,
             type: "smoothstep",
-            interactionWidth: 20,
-            style: { stroke: "#7FA3E8", strokeWidth: 1.5, strokeDasharray: c.familyContacted ? undefined : "3 4", opacity: dimmed ? 0.15 : 1 },
+            style: { stroke: "#7FA3E8", strokeWidth: 1.5, strokeDasharray: c.familyContacted ? undefined : "3 4" },
             markerEnd: { type: MarkerType.ArrowClosed, color: "#7FA3E8", width: 12, height: 12 },
           });
         }
       });
     });
     return { nodes, edges };
-  }, [active, state, filter.family, focus, focusCase]);
+  }, [active, state, filter.family]);
+
+  // Highlight the hovered branch with CSS only, so React Flow never re-measures or re-renders nodes.
+  const focusCss = focusCase
+    ? (() => {
+        const id = focusCase.id;
+        const g = `g-${focusCase.conversation}`;
+        const keepNodes = [`[data-id="${id}"]`, `[data-id="fam-${id}"]`, `[data-id="${g}"]`, `[data-id="vani"]`]
+          .map((sel) => `.vani-map .react-flow__node${sel}`)
+          .join(",");
+        const keepEdges = [`e-${id}`, `ef-${id}`, `e-${g}`].map((e) => `.vani-map .react-flow__edge[data-id="${e}"]`).join(",");
+        return `.vani-map .react-flow__node,.vani-map .react-flow__edge{opacity:.3}
+${keepNodes},${keepEdges}{opacity:1}
+.vani-map .react-flow__node[data-id="${id}"] .vani-patient-card{box-shadow:0 0 0 2px var(--ring),0 8px 20px rgba(8,24,50,.12)}
+.vani-map .react-flow__edge[data-id="e-${id}"] path,.vani-map .react-flow__edge[data-id="e-${g}"] path{stroke-width:3px}`;
+      })()
+    : "";
 
   const focusMsg = focusCase ? [...state.messages].reverse().find((m) => m.caseId === focusCase.id) : undefined;
   const focusPatient = focusCase ? state.patients.find((p) => p.id === focusCase.patientId) : undefined;
@@ -295,7 +306,8 @@ export function VaniMapView() {
         }
         bodyClassName="p-0"
       >
-        <div className="relative h-[calc(100vh-240px)] min-h-[560px] bg-surface">
+        <div className="vani-map relative h-[calc(100vh-300px)] min-h-[520px] border-t border-[#EEF0F4] bg-surface">
+          {focusCss && <style>{focusCss}</style>}
           {mounted && (
             <ReactFlow
               key={`${active.length}-${filter.family}-${filter.needsHuman}-${filter.mine}`}
@@ -314,57 +326,48 @@ export function VaniMapView() {
               nodesConnectable={false}
               nodesDraggable={false}
               elementsSelectable={false}
+              edgesFocusable={false}
               proOptions={{ hideAttribution: true }}
               onNodeClick={(_, node) => {
                 if (node.type === "patient" || node.type === "family") router.push(`/dashboard/cases/${caseIdOf(node.id)}`);
-              }}
-              onEdgeClick={(_, e) => {
-                const id = caseIdOf(e.id);
-                if (id.startsWith("c")) router.push(`/dashboard/cases/${id}`);
               }}
               onNodeMouseEnter={(_, node) => {
                 if (node.type === "patient" || node.type === "family") setFocus(caseIdOf(node.id));
               }}
               onNodeMouseLeave={() => setFocus(null)}
-              onEdgeMouseEnter={(_, e) => {
-                const id = caseIdOf(e.id);
-                if (id.startsWith("c")) setFocus(id);
-              }}
-              onEdgeMouseLeave={() => setFocus(null)}
             >
               <Background variant={BackgroundVariant.Dots} gap={18} size={1.2} color="#C8CFE0" />
               <Controls showInteractive={false} position="bottom-right" className="!rounded-xl !border !border-steel-100 !shadow-none" />
             </ReactFlow>
           )}
 
-          <div className="pointer-events-none absolute bottom-4 left-4 flex items-center gap-1.5 rounded-lg bg-white/90 px-2.5 py-1.5 text-[11px] text-steel-500 shadow-sm">
-            <MousePointerClick className="size-3.5" /> Drag to move · use +/− to zoom · click a patient to open
-          </div>
-
-          {focusCase && focusPatient && (
-            <div className="pointer-events-none absolute top-4 left-4 w-80 rounded-xl bg-navy-950 p-3.5 text-xs text-white shadow-xl">
-              <div className="flex items-center justify-between gap-2">
-                <p className="font-semibold">{focusPatient.name}</p>
-                <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: CONVERSATION_META[focusCase.conversation].color }}>
-                  {CONVERSATION_META[focusCase.conversation].label}
-                </span>
-              </div>
-              <p className="mt-0.5 text-white/60">
-                BP {focusCase.systolic}/{focusCase.diastolic} · since {formatDay(focusCase.resultDay)}
-              </p>
-              {focusMsg && (
-                <p className="mt-2 leading-relaxed text-white/90">
-                  <span className="text-white/50">
-                    {focusMsg.from === "vani" ? "Vani" : focusMsg.senderName} · Day {focusMsg.day} {focusMsg.time}:
-                  </span>{" "}
-                  {focusMsg.text}
-                </p>
-              )}
-              <p className="mt-2 text-[10px] text-white/50">Click to open the case</p>
-            </div>
-          )}
           {active.length === 0 && (
             <div className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-steel-500">No conversations match these filters.</div>
+          )}
+        </div>
+
+        {/* Details strip: shows the hovered patient, never covers the map */}
+        <div className="flex min-h-[60px] items-center gap-4 border-t border-[#EEF0F4] bg-white px-5 py-3 text-xs">
+          {focusCase && focusPatient ? (
+            <>
+              <span className="flex items-center gap-2">
+                <span className="size-2 rounded-full" style={{ background: CONVERSATION_META[focusCase.conversation].color }} />
+                <span className="font-semibold text-navy-950">{focusPatient.name}</span>
+                <span className="text-steel-500">
+                  BP {focusCase.systolic}/{focusCase.diastolic} · {CONVERSATION_META[focusCase.conversation].label} · since {formatDay(focusCase.resultDay)}
+                </span>
+              </span>
+              {focusMsg && (
+                <span className="min-w-0 flex-1 truncate text-steel-500">
+                  <span className="text-steel-300">{focusMsg.from === "vani" ? "Vani" : focusMsg.senderName}:</span> {focusMsg.text}
+                </span>
+              )}
+              <span className="shrink-0 font-medium text-navy-900">Click to open →</span>
+            </>
+          ) : (
+            <span className="flex items-center gap-1.5 text-steel-500">
+              <MousePointerClick className="size-3.5" /> Hover a patient card to trace its branch · click to open the case · drag to move · +/− to zoom
+            </span>
           )}
         </div>
       </Panel>
