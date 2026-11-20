@@ -191,7 +191,31 @@ export function CaseStatusBadge({ status }: { status: CaseStatus }) {
   );
 }
 
-export function Initials({ name, className, tone = "brand" }: { name: string; className?: string; tone?: "brand" | "soft" }) {
+export function Initials({
+  name,
+  className,
+  tone = "brand",
+  avatarUrl,
+}: {
+  name: string;
+  className?: string;
+  tone?: "brand" | "soft";
+  avatarUrl?: string;
+}) {
+  if (avatarUrl) {
+    return (
+      <span
+        className={cn(
+          "relative inline-block size-8 shrink-0 overflow-hidden rounded-full border border-black/5 bg-slate-100",
+          className,
+        )}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={avatarUrl} alt={name} className="size-full object-cover" />
+      </span>
+    );
+  }
+
   const initials = name
     .replace(/^(Dr\.|Nurse)\s+/i, "")
     .split(" ")

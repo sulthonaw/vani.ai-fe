@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { cn } from "@/libs/utils";
-import { PRIORITY_META, REASON_META, STATUS_LABEL, formatDay, weekdayOf } from "../logic/constants";
+import { PRIORITY_META, REASON_META, STATUS_LABEL, formatDay, getPatientAvatar, weekdayOf } from "../logic/constants";
 import { dayCount } from "../logic/engine";
 import { funnel, needsToday, performance, returnsPerDay, statusCounts, vaniActivity } from "../logic/metrics";
 import { useActiveAccount, useDemoStore } from "../hooks/use-demo-store";
@@ -69,7 +69,7 @@ function NeedsYou() {
                   onClick={() => router.push(`/dashboard/cases/${c.id}`)}
                   className="group flex w-full items-center gap-3 border-t border-[#F1F3F6] px-5 py-3 text-left transition-colors hover:bg-[#FAFBFC]"
                 >
-                  <Initials name={patient.name} tone="soft" className="size-8" />
+                  <Initials name={patient.name} avatarUrl={getPatientAvatar(patient)} tone="soft" className="size-8" />
                   <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-2 truncate text-[13px] font-medium text-navy-950">
                       {patient.name}

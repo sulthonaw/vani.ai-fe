@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Stethoscope } from "lucide-react";
-import { CONVERSATION_META, REASON_META } from "../logic/constants";
+import { CONVERSATION_META, REASON_META, getPatientAvatar } from "../logic/constants";
 import { useDemoStore } from "../hooks/use-demo-store";
 import { EmptyState, Initials, Panel } from "./ui-kit";
 
@@ -32,7 +32,7 @@ export function DoctorQueueView() {
               onClick={() => router.push(`/dashboard/cases/${c.id}`)}
               className="flex w-full items-start gap-4 rounded-lg border border-[#EEF0F4] p-4 text-left transition hover:bg-[#FAFBFC]"
             >
-              <Initials name={p.name} tone="soft" className="size-10 text-xs" />
+              <Initials name={p.name} avatarUrl={getPatientAvatar(p)} tone="soft" className="size-10 text-xs" />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-semibold text-navy-900">

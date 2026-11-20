@@ -38,33 +38,40 @@ function SwitcherMenu({ align, side }: { align: "start" | "end"; side: "top" | "
   const switchTo = useSwitchAccount();
 
   return (
-    <DropdownMenuContent align={align} side={side} sideOffset={8} className="w-72 rounded-xl p-1.5">
+    <DropdownMenuContent align={align} side={side} sideOffset={6} className="w-60 rounded-xl p-1 shadow-lg border border-steel-100">
       <DropdownMenuGroup>
-        <DropdownMenuLabel className="px-2 py-1.5 text-[11px] uppercase tracking-wide">Switch account (demo)</DropdownMenuLabel>
+        <DropdownMenuLabel className="px-2 py-1 text-[10px] font-medium tracking-wider text-steel-400 uppercase">
+          Switch account (demo)
+        </DropdownMenuLabel>
         <DropdownMenuRadioGroup value={active.id} onValueChange={(v) => switchTo(String(v))}>
           {ACCOUNTS.map((a) => (
-            <DropdownMenuRadioItem key={a.id} value={a.id} closeOnClick className="gap-2.5 rounded-lg px-2 py-2">
-              <Initials name={a.name} className="size-7 text-[10px]" tone={a.id === active.id ? "brand" : "soft"} />
-              <span className="flex flex-col">
-                <span className="text-sm font-semibold text-navy-900">{a.name}</span>
-                <span className="text-xs text-steel-500">{a.title}</span>
+            <DropdownMenuRadioItem key={a.id} value={a.id} closeOnClick className="gap-2 rounded-lg px-2 py-1.5 cursor-pointer">
+              <Initials
+                name={a.name}
+                avatarUrl={a.avatar}
+                className="size-6 text-[9px]"
+                tone={a.id === active.id ? "brand" : "soft"}
+              />
+              <span className="flex flex-col min-w-0">
+                <span className="text-[12px] font-semibold text-navy-900 leading-tight truncate">{a.name}</span>
+                <span className="text-[10px] text-steel-500 leading-tight truncate">{a.title}</span>
               </span>
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
       </DropdownMenuGroup>
-      <DropdownMenuSeparator />
+      <DropdownMenuSeparator className="my-1" />
       <DropdownMenuItem
-        className="gap-2 rounded-lg px-2 py-2 text-steel-500"
+        className="gap-2 rounded-lg px-2 py-1.5 text-xs text-steel-500 cursor-pointer"
         onClick={() => {
           reset();
           toast("Demo data reset", { description: "Back to day 17 as Nurse Rina." });
         }}
       >
-        <RotateCcw className="size-4" /> Reset demo data
+        <RotateCcw className="size-3.5" /> Reset demo data
       </DropdownMenuItem>
-      <div className="flex items-center gap-2 px-2 py-1.5 text-[11px] text-steel-300">
-        <Info className="size-3.5" /> All data is synthetic · {FACILITY.short}
+      <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] text-steel-400">
+        <Info className="size-3" /> All data is synthetic · {FACILITY.short}
       </div>
     </DropdownMenuContent>
   );
@@ -77,21 +84,21 @@ export function SidebarAccountSwitcher({ collapsed }: { collapsed?: boolean }) {
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(
-          "flex w-full items-center gap-2.5 rounded-lg p-2 text-left transition hover:bg-[#F4F5F8]",
+          "flex w-full items-center gap-2 rounded-lg p-1.5 text-left transition hover:bg-[#F4F5F8]",
           collapsed && "justify-center border-transparent p-1",
         )}
         aria-label="Switch account"
       >
-        <Initials name={active.name} />
+        <Initials name={active.name} avatarUrl={active.avatar} className="size-7 text-[10px]" />
         {!collapsed && (
           <>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13px] font-semibold text-navy-900">{active.name}</span>
-              <span className="block truncate text-[11px] text-steel-500">
+              <span className="block truncate text-xs font-semibold text-navy-900">{active.name}</span>
+              <span className="block truncate text-[10px] text-steel-500">
                 {active.title} · {FACILITY.short}
               </span>
             </span>
-            <ChevronsUpDown className="size-4 text-steel-300" />
+            <ChevronsUpDown className="size-3.5 text-steel-300" />
           </>
         )}
       </DropdownMenuTrigger>
@@ -105,13 +112,13 @@ export function NavbarAccountSwitcher() {
   const active = useActiveAccount();
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-2 rounded-full p-0.5 pr-2 transition hover:bg-surface" aria-label="Switch account">
-        <Initials name={active.name} />
+      <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-full p-0.5 pr-1.5 transition hover:bg-surface" aria-label="Switch account">
+        <Initials name={active.name} avatarUrl={active.avatar} className="size-7 text-[10px]" />
         <span className="hidden text-left md:block">
-          <span className="block text-xs font-semibold leading-tight text-navy-900">{active.name}</span>
-          <span className="block text-[10px] leading-tight text-steel-500">{active.title}</span>
+          <span className="block text-[11px] font-semibold leading-tight text-navy-900">{active.name}</span>
+          <span className="block text-[9.5px] leading-tight text-steel-500">{active.title}</span>
         </span>
-        <ChevronsUpDown className="hidden size-3.5 text-steel-300 md:block" />
+        <ChevronsUpDown className="hidden size-3 text-steel-300 md:block" />
       </DropdownMenuTrigger>
       <SwitcherMenu align="end" side="bottom" />
     </DropdownMenu>

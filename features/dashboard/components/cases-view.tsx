@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/libs/utils";
 import type { CaseRecord, CaseStatus, Patient, Priority, ReasonCode } from "../types";
-import { PRIORITY_META, REASON_CODES, REASON_META, STATUS_LABEL, formatDay } from "../logic/constants";
+import { PRIORITY_META, REASON_CODES, REASON_META, STATUS_LABEL, formatDay, getPatientAvatar } from "../logic/constants";
 import { accountById, dayCount, isOverdue, priorityOf } from "../logic/engine";
 import { useActiveAccount, useDemoStore } from "../hooks/use-demo-store";
 import { CaseStatusBadge, ConversationBadge, FilterSelect, Initials, PageHeader, Panel, PriorityBadge, Segmented } from "./ui-kit";
@@ -287,7 +287,7 @@ export function CasesView() {
                 >
                   <TableCell className="py-3 pl-5">
                     <div className="flex items-center gap-2.5">
-                      <Initials name={p.name} tone="soft" className="size-7 text-[10px]" />
+                      <Initials name={p.name} avatarUrl={getPatientAvatar(p)} tone="soft" className="size-7 text-[10px]" />
                       <div className="min-w-0">
                         <p className="flex items-center gap-1.5 font-medium text-navy-950">
                           {p.name}

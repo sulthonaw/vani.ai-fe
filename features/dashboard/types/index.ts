@@ -6,6 +6,7 @@ export interface DemoAccount {
   role: Role;
   initials: string;
   title: string;
+  avatar?: string;
 }
 
 export type CaseStatus =

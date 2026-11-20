@@ -16,10 +16,10 @@ export const FACILITY = {
 };
 
 export const ACCOUNTS: DemoAccount[] = [
-  { id: "rina", name: "Nurse Rina", role: "coordinator", initials: "RN", title: "Care Coordinator" },
-  { id: "dewi", name: "Nurse Dewi", role: "coordinator", initials: "DW", title: "Care Coordinator" },
-  { id: "yoga", name: "Dr. Yoga", role: "doctor", initials: "DY", title: "Doctor" },
-  { id: "hadi", name: "Hadi", role: "manager", initials: "HD", title: "Facility Manager" },
+  { id: "rina", name: "Nurse Rina", role: "coordinator", initials: "RN", title: "Care Coordinator", avatar: "/images/avatars/nurse.png" },
+  { id: "dewi", name: "Nurse Dewi", role: "coordinator", initials: "DW", title: "Care Coordinator", avatar: "/images/avatars/nurse.png" },
+  { id: "yoga", name: "Dr. Yoga", role: "doctor", initials: "DY", title: "Doctor", avatar: "/images/avatars/dokter.png" },
+  { id: "hadi", name: "Hadi", role: "manager", initials: "HD", title: "Facility Manager", avatar: "/images/avatars/manager.png" },
 ];
 
 export const ROLE_HOME: Record<Role, string> = {
@@ -27,6 +27,13 @@ export const ROLE_HOME: Record<Role, string> = {
   doctor: "/dashboard",
   manager: "/dashboard/insights",
 };
+
+export function getPatientAvatar(patient?: { sex?: "F" | "M"; age?: number } | null): string {
+  if (!patient) return "/images/avatars/pasien.png";
+  if (patient.sex === "F") return "/images/avatars/pasien-ibu.png";
+  if ((patient.age ?? 0) >= 50) return "/images/avatars/pasien-bapak.png";
+  return "/images/avatars/pasien.png";
+}
 
 export const RULES = {
   createCaseSystolic: 140,

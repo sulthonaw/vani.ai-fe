@@ -29,7 +29,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/libs/utils";
 import type { CaseRecord, ClosureType, DemoState } from "../types";
-import { CLOSURE_LABEL, CONSENT_LABEL, REASON_META, formatDay, nextWeekday } from "../logic/constants";
+import { CLOSURE_LABEL, CONSENT_LABEL, REASON_META, formatDay, getPatientAvatar, nextWeekday } from "../logic/constants";
 import { accountById, canClose, dayCount, familyOf, isOverdue, priorityOf } from "../logic/engine";
 import { useActiveAccount, useDemoStore } from "../hooks/use-demo-store";
 import { CaseStatusBadge, ConversationBadge, EmptyState, FilterSelect, Initials, Panel, PriorityBadge } from "./ui-kit";
@@ -207,6 +207,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   }
 
   const patient = state.patients.find((p) => p.id === c.patientId)!;
+  const patientAvatar = getPatientAvatar(patient);
   const fam = familyOf(state, c.patientId);
   const famAny = state.families.find((f) => f.patientId === c.patientId);
   const takenByMe = c.takeoverBy === account.id;
@@ -220,7 +221,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
       {/* Header */}
       <section className="rounded-xl border border-[#E8EBF1] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         <div className="flex flex-wrap items-start gap-4 px-5 py-4">
-          <Initials name={patient.name} className="size-12 text-sm" />
+          <Initials name={patient.name} avatarUrl={patientAvatar} className="size-12 text-sm" />
           <div className="min-w-0 flex-1">
             <h1 className="text-xl font-semibold tracking-tight text-navy-950">
               {patient.name}, {patient.age}
